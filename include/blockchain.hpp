@@ -83,6 +83,8 @@ public:
     [[nodiscard]] std::vector<std::string> getBlockLocatorHashes() const;
     [[nodiscard]] std::optional<std::size_t> findHighestLocatorMatch(
         const std::vector<std::string>& locatorHashes) const;
+    [[nodiscard]] std::vector<BlockHeaderInfo> getHeadersForLocator(const std::vector<std::string>& locatorHashes,
+                                                                     std::size_t maxCount) const;
     [[nodiscard]] bool tryAdoptChain(const std::vector<Block>& candidateChain);
     [[nodiscard]] const std::vector<Block>& getChain() const;
     [[nodiscard]] const std::vector<Transaction>& getPendingTransactions() const;

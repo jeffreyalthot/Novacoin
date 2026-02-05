@@ -833,6 +833,21 @@ std::optional<std::size_t> Blockchain::findHighestLocatorMatch(
     return best;
 }
 
+std::vector<BlockHeaderInfo> Blockchain::getHeadersForLocator(const std::vector<std::string>& locatorHashes,
+                                                                 std::size_t maxCount) const {
+    if (maxCount == 0 || chain_.empty()) {
+        return {};
+    }
+
+    std::size_t startHeight = 0;
+    const auto match = findHighestLocatorMatch(locatorHashes);
+    if (match.has_value()) {
+        startHeight = match.value() + 1;
+    }
+
+    return getHeadersFromHeight(startHeight, maxCount);
+}
+
 std::vector<std::pair<std::string, Amount>> Blockchain::getTopBalances(std::size_t limit) const {
     if (limit == 0) {
         return {};

@@ -7,6 +7,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 namespace {
 std::uint64_t nowSeconds() {
@@ -23,7 +24,8 @@ void printUsage() {
               << "  novacoin-cli address-stats <address>\n"
               << "  novacoin-cli top <limit>\n"
               << "  novacoin-cli headers <start_height> <max_count>\n"
-              << "  novacoin-cli locator\n";
+              << "  novacoin-cli locator\n"
+              << "  novacoin-cli headers-sync <max_count> [locator_hash ...]\n";
 }
 
 double parseDouble(const std::string& raw, const std::string& field) {
@@ -128,6 +130,28 @@ int main(int argc, char* argv[]) {
             const std::size_t maxCount = static_cast<std::size_t>(std::stoull(argv[3]));
             const auto headers = chain.getHeadersFromHeight(startHeight, maxCount);
             std::cout << "headers=" << headers.size() << "\n";
+            for (const auto& header : headers) {
+                std::cout << "  h=" << header.index << " diff=" << header.difficulty << " ts=" << header.timestamp
+                          << " hash=" << header.hash << " prev=" << header.previousHash << "\n";
+            }
+            return 0;
+        }
+
+        if (command == "headers-sync") {
+            if (argc < 3) {
+                printUsage();
+                return 1;
+            }
+
+            const std::size_t maxCount = static_cast<std::size_t>(std::stoull(argv[2]));
+            std::vector<std::string> locatorHashes;
+            locatorHashes.reserve(static_cast<std::size_t>(argc > 3 ? argc - 3 : 0));
+            for (int i = 3; i < argc; ++i) {
+                locatorHashes.emplace_back(argv[i]);
+            }
+
+            const auto headers = chain.getHeadersForLocator(locatorHashes, maxCount);
+            std::cout << "headers_sync=" << headers.size() << "\n";
             for (const auto& header : headers) {
                 std::cout << "  h=" << header.index << " diff=" << header.difficulty << " ts=" << header.timestamp
                           << " hash=" << header.hash << " prev=" << header.previousHash << "\n";
