@@ -400,6 +400,15 @@ bool Blockchain::isChainValid(const std::vector<Block>& candidateChain) const {
             return false;
         }
 
+        if (i > 0) {
+            if (current.getTransactions().empty()) {
+                return false;
+            }
+            if (current.getTransactions().back().from != "network") {
+                return false;
+            }
+        }
+
         if (!hasNonDecreasingTimestamps(current.getTransactions())) {
             return false;
         }
@@ -408,7 +417,8 @@ bool Blockchain::isChainValid(const std::vector<Block>& candidateChain) const {
         Amount mintedInBlock = 0;
         std::size_t coinbaseCount = 0;
 
-        for (const auto& tx : current.getTransactions()) {
+        for (std::size_t txIndex = 0; txIndex < current.getTransactions().size(); ++txIndex) {
+            const auto& tx = current.getTransactions()[txIndex];
             if (!isTransactionShapeValid(tx) || !isTimestampAcceptable(tx.timestamp)) {
                 return false;
             }
@@ -433,6 +443,9 @@ bool Blockchain::isChainValid(const std::vector<Block>& candidateChain) const {
                 }
             } else {
                 ++coinbaseCount;
+                if (i > 0 && txIndex + 1 != current.getTransactions().size()) {
+                    return false;
+                }
                 if (!safeAdd(mintedInBlock, tx.amount, mintedInBlock) ||
                     !safeAdd(cumulativeSupply, tx.amount, cumulativeSupply)) {
                     return false;
