@@ -899,8 +899,28 @@ std::optional<std::size_t> Blockchain::findHighestLocatorMatch(
     return best;
 }
 
+std::optional<std::size_t> Blockchain::findBlockHeightByHash(const std::string& hash) const {
+    if (hash.empty()) {
+        return std::nullopt;
+    }
+
+    for (std::size_t i = 0; i < chain_.size(); ++i) {
+        if (chain_[i].getHash() == hash) {
+            return i;
+        }
+    }
+
+    return std::nullopt;
+}
+
 std::vector<BlockHeaderInfo> Blockchain::getHeadersForLocator(const std::vector<std::string>& locatorHashes,
                                                                  std::size_t maxCount) const {
+    return getHeadersForLocatorWithStop(locatorHashes, maxCount, "");
+}
+
+std::vector<BlockHeaderInfo> Blockchain::getHeadersForLocatorWithStop(const std::vector<std::string>& locatorHashes,
+                                                                      std::size_t maxCount,
+                                                                      const std::string& stopHash) const {
     if (maxCount == 0 || chain_.empty()) {
         return {};
     }
@@ -911,7 +931,20 @@ std::vector<BlockHeaderInfo> Blockchain::getHeadersForLocator(const std::vector<
         startHeight = match.value() + 1;
     }
 
-    return getHeadersFromHeight(startHeight, maxCount);
+    std::size_t allowedCount = maxCount;
+    if (!stopHash.empty()) {
+        const auto stopHeight = findBlockHeightByHash(stopHash);
+        if (stopHeight.has_value()) {
+            if (stopHeight.value() < startHeight) {
+                return {};
+            }
+
+            const std::size_t upToStop = stopHeight.value() - startHeight + 1;
+            allowedCount = std::min(allowedCount, upToStop);
+        }
+    }
+
+    return getHeadersFromHeight(startHeight, allowedCount);
 }
 
 std::vector<std::pair<std::string, Amount>> Blockchain::getTopBalances(std::size_t limit) const {

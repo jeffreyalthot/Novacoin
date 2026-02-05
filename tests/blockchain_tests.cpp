@@ -457,6 +457,36 @@ void testHeadersForLocatorReturnsNextSegment() {
 }
 
 
+
+void testHeadersForLocatorWithStopHashBoundsResponse() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 4};
+    chain.minePendingTransactions("miner");
+    chain.minePendingTransactions("miner");
+    chain.minePendingTransactions("miner");
+
+    const std::string forkPointHash = chain.getChain()[1].getHash();
+    const std::string stopHash = chain.getChain()[2].getHash();
+
+    const auto headers = chain.getHeadersForLocatorWithStop({forkPointHash}, 10, stopHash);
+    assertTrue(headers.size() == 1,
+               "Le stop hash doit borner la reponse headers-sync au bloc cible inclus.");
+    assertTrue(headers.front().index == 2,
+               "La synchronisation avec stop doit commencer apres locator et s'arreter au stop hash.");
+}
+
+void testHeadersForLocatorWithUnknownStopHashFallsBackToMaxCount() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 4};
+    chain.minePendingTransactions("miner");
+    chain.minePendingTransactions("miner");
+
+    const std::string knownLocator = chain.getChain()[0].getHash();
+    const auto headers = chain.getHeadersForLocatorWithStop({knownLocator}, 2, "unknown-stop");
+    assertTrue(headers.size() == 2,
+               "Un stop hash inconnu doit conserver le comportement limite par max_count.");
+    assertTrue(headers[0].index == 1 && headers[1].index == 2,
+               "Sans stop hash resolvable, les headers doivent etre renvoyes sequentiellement.");
+}
+
 void testExpiredMempoolTransactionsArePruned() {
     Blockchain chain{1, Transaction::fromNOVA(25.0), 4};
     chain.minePendingTransactions("miner");
@@ -611,6 +641,8 @@ int main() {
         testMempoolStatsExposePendingFeeDistribution();
         testHeadersFromHeightAndLocatorHelpers();
         testHeadersForLocatorReturnsNextSegment();
+        testHeadersForLocatorWithStopHashBoundsResponse();
+        testHeadersForLocatorWithUnknownStopHashFallsBackToMaxCount();
         testExpiredMempoolTransactionsArePruned();
         testAmountConversionRoundTrip();
         testDifficultyRetargetIncreasesWhenBlocksTooFast();
