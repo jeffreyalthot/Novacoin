@@ -31,6 +31,10 @@ void Blockchain::createTransaction(const Transaction& tx) {
         throw std::invalid_argument("Les adresses source et destination sont obligatoires.");
     }
 
+    if (tx.from != "network" && tx.amount > getAvailableBalance(tx.from)) {
+        throw std::invalid_argument("Fonds insuffisants pour créer cette transaction.");
+    }
+
     pendingTransactions_.push_back(tx);
 }
 
@@ -66,6 +70,41 @@ double Blockchain::getBalance(const std::string& address) const {
     }
 
     return balance;
+}
+
+double Blockchain::getAvailableBalance(const std::string& address) const {
+    double balance = getBalance(address);
+
+    for (const auto& tx : pendingTransactions_) {
+        if (tx.from == address) {
+            balance -= tx.amount;
+        }
+        if (tx.to == address) {
+            balance += tx.amount;
+        }
+    }
+
+    return balance;
+}
+
+std::vector<Transaction> Blockchain::getTransactionHistory(const std::string& address) const {
+    std::vector<Transaction> history;
+
+    for (const auto& block : chain_) {
+        for (const auto& tx : block.getTransactions()) {
+            if (tx.from == address || tx.to == address) {
+                history.push_back(tx);
+            }
+        }
+    }
+
+    for (const auto& tx : pendingTransactions_) {
+        if (tx.from == address || tx.to == address) {
+            history.push_back(tx);
+        }
+    }
+
+    return history;
 }
 
 bool Blockchain::isValid() const {

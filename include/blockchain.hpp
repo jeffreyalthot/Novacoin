@@ -13,6 +13,8 @@ public:
     void minePendingTransactions(const std::string& minerAddress);
 
     [[nodiscard]] double getBalance(const std::string& address) const;
+    [[nodiscard]] double getAvailableBalance(const std::string& address) const;
+    [[nodiscard]] std::vector<Transaction> getTransactionHistory(const std::string& address) const;
     [[nodiscard]] bool isValid() const;
     [[nodiscard]] const std::vector<Block>& getChain() const;
     [[nodiscard]] const std::vector<Transaction>& getPendingTransactions() const;

@@ -9,6 +9,8 @@ Implémentation cohérente d'une blockchain simplifiée en C++ pour le projet No
 - Transactions signées par des adresses (source / destination / montant / timestamp).
 - Gestion d'un mempool (`pendingTransactions`) et récompense de minage.
 - Vérification d'intégrité complète de la chaîne (`isValid`).
+- Vérification des fonds disponibles avant d'ajouter une transaction.
+- Historique des transactions par adresse (incluant les transactions en attente).
 
 ## Build
 
@@ -27,5 +29,5 @@ cmake --build build
 
 - `include/transaction.hpp` : modèle de transaction.
 - `include/block.hpp` : bloc minable + hash de contenu.
-- `include/blockchain.hpp` : logique de chaîne, minage, validation, solde.
+- `include/blockchain.hpp` : logique de chaîne, minage, validation, solde et historique.
 - `src/main.cpp` : scénario de démonstration complet.
