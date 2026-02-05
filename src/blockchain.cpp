@@ -30,6 +30,21 @@ bool isTransactionShapeValid(const Transaction& tx) {
 
     return tx.amount > 0.0 && tx.fee >= 0.0;
 }
+
+bool hasNonDecreasingTimestamps(const std::vector<Transaction>& transactions) {
+    if (transactions.empty()) {
+        return true;
+    }
+
+    for (std::size_t i = 1; i < transactions.size(); ++i) {
+        if (transactions[i].timestamp < transactions[i - 1].timestamp) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 } // namespace
 
 Blockchain::Blockchain(unsigned int difficulty,
@@ -66,6 +81,11 @@ double Blockchain::blockSubsidyAtHeight(std::size_t height) const {
     return reward < 1e-8 ? 0.0 : reward;
 }
 
+bool Blockchain::isTimestampAcceptable(std::uint64_t timestamp) const {
+    const std::uint64_t now = nowSeconds();
+    return timestamp <= now + kMaxFutureDriftSeconds;
+}
+
 void Blockchain::createTransaction(const Transaction& tx) {
     if (!isTransactionShapeValid(tx)) {
         throw std::invalid_argument("Transaction invalide (adresses, montant ou frais).");
@@ -73,6 +93,14 @@ void Blockchain::createTransaction(const Transaction& tx) {
 
     if (tx.from == "network") {
         throw std::invalid_argument("Les transactions network sont réservées au consensus (coinbase).");
+    }
+
+    if (!isTimestampAcceptable(tx.timestamp)) {
+        throw std::invalid_argument("Horodatage transaction trop dans le futur.");
+    }
+
+    if (tx.fee < kMinRelayFee) {
+        throw std::invalid_argument("Frais insuffisants pour entrer en mempool.");
     }
 
     if (tx.amount + tx.fee > getAvailableBalance(tx.from)) {
@@ -105,15 +133,49 @@ void Blockchain::minePendingTransactions(const std::string& minerAddress) {
     }
 
     const std::size_t maxUserTransactions = maxTransactionsPerBlock_ > 0 ? maxTransactionsPerBlock_ - 1 : 0;
-    const std::size_t txCount = std::min(maxUserTransactions, pendingTransactions_.size());
+
+    std::vector<std::size_t> order(pendingTransactions_.size());
+    for (std::size_t i = 0; i < pendingTransactions_.size(); ++i) {
+        order[i] = i;
+    }
+
+    std::stable_sort(order.begin(), order.end(), [this](std::size_t lhs, std::size_t rhs) {
+        return pendingTransactions_[lhs].fee > pendingTransactions_[rhs].fee;
+    });
 
     std::vector<Transaction> transactionsToMine;
-    transactionsToMine.reserve(txCount + 1);
+    transactionsToMine.reserve(maxUserTransactions + 1);
 
+    std::unordered_map<std::string, double> projectedBalance;
     double collectedFees = 0.0;
-    for (std::size_t i = 0; i < txCount; ++i) {
-        collectedFees += pendingTransactions_[i].fee;
-        transactionsToMine.push_back(pendingTransactions_[i]);
+
+    for (const std::size_t idx : order) {
+        if (transactionsToMine.size() >= maxUserTransactions) {
+            break;
+        }
+
+        const Transaction& candidate = pendingTransactions_[idx];
+        if (!isTimestampAcceptable(candidate.timestamp)) {
+            continue;
+        }
+
+        if (projectedBalance.find(candidate.from) == projectedBalance.end()) {
+            projectedBalance[candidate.from] = getBalance(candidate.from);
+        }
+        if (projectedBalance.find(candidate.to) == projectedBalance.end()) {
+            projectedBalance[candidate.to] = getBalance(candidate.to);
+        }
+
+        const double debit = candidate.amount + candidate.fee;
+        if (projectedBalance[candidate.from] + 1e-9 < debit) {
+            continue;
+        }
+
+        projectedBalance[candidate.from] -= debit;
+        projectedBalance[candidate.to] += candidate.amount;
+
+        collectedFees += candidate.fee;
+        transactionsToMine.push_back(candidate);
     }
 
     const double scheduledReward = baseReward + collectedFees;
@@ -124,9 +186,21 @@ void Blockchain::minePendingTransactions(const std::string& minerAddress) {
     blockToMine.mine(difficulty_);
     chain_.push_back(blockToMine);
 
+    const std::unordered_map<std::string, bool> minedIds = [&transactionsToMine]() {
+        std::unordered_map<std::string, bool> ids;
+        for (const auto& tx : transactionsToMine) {
+            if (tx.from != "network") {
+                ids.emplace(tx.id(), true);
+            }
+        }
+        return ids;
+    }();
+
     pendingTransactions_.erase(
-        pendingTransactions_.begin(),
-        pendingTransactions_.begin() + static_cast<std::ptrdiff_t>(txCount));
+        std::remove_if(pendingTransactions_.begin(), pendingTransactions_.end(), [&minedIds](const Transaction& tx) {
+            return minedIds.find(tx.id()) != minedIds.end();
+        }),
+        pendingTransactions_.end());
 }
 
 double Blockchain::getBalance(const std::string& address) const {
@@ -162,12 +236,9 @@ double Blockchain::getAvailableBalance(const std::string& address) const {
 }
 
 double Blockchain::estimateNextMiningReward() const {
-    const std::size_t maxUserTransactions = maxTransactionsPerBlock_ > 0 ? maxTransactionsPerBlock_ - 1 : 0;
-    const std::size_t txCount = std::min(maxUserTransactions, pendingTransactions_.size());
-
     double totalFees = 0.0;
-    for (std::size_t i = 0; i < txCount; ++i) {
-        totalFees += pendingTransactions_[i].fee;
+    for (const auto& tx : getPendingTransactionsForBlockTemplate()) {
+        totalFees += tx.fee;
     }
 
     const double baseReward = blockSubsidyAtHeight(chain_.size());
@@ -230,6 +301,10 @@ bool Blockchain::isValid() const {
     for (std::size_t i = 0; i < chain_.size(); ++i) {
         const auto& current = chain_[i];
 
+        if (!isTimestampAcceptable(current.getTimestamp())) {
+            return false;
+        }
+
         if (i == 0) {
             if (!current.hasValidHash(difficulty_)) {
                 return false;
@@ -242,9 +317,16 @@ bool Blockchain::isValid() const {
             if (!current.hasValidHash(difficulty_)) {
                 return false;
             }
+            if (current.getTimestamp() + 1 < previous.getTimestamp()) {
+                return false;
+            }
         }
 
         if (i > 0 && current.getTransactions().size() > maxTransactionsPerBlock_) {
+            return false;
+        }
+
+        if (!hasNonDecreasingTimestamps(current.getTransactions())) {
             return false;
         }
 
@@ -253,11 +335,14 @@ bool Blockchain::isValid() const {
         std::size_t coinbaseCount = 0;
 
         for (const auto& tx : current.getTransactions()) {
-            if (!isTransactionShapeValid(tx)) {
+            if (!isTransactionShapeValid(tx) || !isTimestampAcceptable(tx.timestamp)) {
                 return false;
             }
 
             if (tx.from != "network") {
+                if (tx.fee < kMinRelayFee) {
+                    return false;
+                }
                 if (balances[tx.from] + 1e-9 < tx.amount + tx.fee) {
                     return false;
                 }
@@ -288,9 +373,48 @@ bool Blockchain::isValid() const {
 
 std::vector<Transaction> Blockchain::getPendingTransactionsForBlockTemplate() const {
     const std::size_t maxUserTransactions = maxTransactionsPerBlock_ > 0 ? maxTransactionsPerBlock_ - 1 : 0;
-    const std::size_t txCount = std::min(maxUserTransactions, pendingTransactions_.size());
-    return std::vector<Transaction>(pendingTransactions_.begin(),
-                                    pendingTransactions_.begin() + static_cast<std::ptrdiff_t>(txCount));
+
+    std::vector<std::size_t> order(pendingTransactions_.size());
+    for (std::size_t i = 0; i < pendingTransactions_.size(); ++i) {
+        order[i] = i;
+    }
+
+    std::stable_sort(order.begin(), order.end(), [this](std::size_t lhs, std::size_t rhs) {
+        return pendingTransactions_[lhs].fee > pendingTransactions_[rhs].fee;
+    });
+
+    std::unordered_map<std::string, double> projectedBalance;
+    std::vector<Transaction> selected;
+    selected.reserve(maxUserTransactions);
+
+    for (const std::size_t idx : order) {
+        if (selected.size() >= maxUserTransactions) {
+            break;
+        }
+
+        const Transaction& candidate = pendingTransactions_[idx];
+        if (!isTimestampAcceptable(candidate.timestamp)) {
+            continue;
+        }
+
+        if (projectedBalance.find(candidate.from) == projectedBalance.end()) {
+            projectedBalance[candidate.from] = getBalance(candidate.from);
+        }
+        if (projectedBalance.find(candidate.to) == projectedBalance.end()) {
+            projectedBalance[candidate.to] = getBalance(candidate.to);
+        }
+
+        const double debit = candidate.amount + candidate.fee;
+        if (projectedBalance[candidate.from] + 1e-9 < debit) {
+            continue;
+        }
+
+        projectedBalance[candidate.from] -= debit;
+        projectedBalance[candidate.to] += candidate.amount;
+        selected.push_back(candidate);
+    }
+
+    return selected;
 }
 
 std::string Blockchain::getChainSummary() const {

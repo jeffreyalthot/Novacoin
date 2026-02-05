@@ -299,6 +299,9 @@ cmake --build build
 - Ajout d'un **résumé de chaîne** (`getChainSummary`) pour l'observabilité minimale côté CLI.
 - Extension de la suite de tests automatisés C++ (hard cap, rejet de mint illégal, récompenses avec frais, doublons mempool, capacité template bloc).
 - Mise à jour du build CMake pour séparer `novacoin_core`, exécutable principal et exécutable de tests.
+- Ajout d'une **politique de mempool minimale** avec frais plancher (`kMinRelayFee`) pour filtrer les transactions non économiques.
+- Ajout d'un **filtre anti-horloge** : rejet des transactions trop dans le futur, et contrôles d'horodatage côté validation de chaîne.
+- Priorisation du template de bloc par frais (ordre décroissant) avec pré-validation de solvabilité projetée, pour améliorer l'efficacité du minage local.
 
 ## Travaux supplémentaires à effectuer (roadmap enrichie)
 
@@ -317,19 +320,26 @@ cmake --build build
 8. **Implémenter une politique de mempool** (frais minimum, remplacement optionnel, limites par adresse et taille globale).
 9. **Renforcer la logique anti-double-dépense locale** entre transactions pending conflictuelles.
 10. **Ajouter un mode relecture/validation complète** au démarrage avec rapport d'erreurs structuré.
+11. **Ajouter une politique d'expiration mempool (TTL)** avec purge périodique et bornes de taille adaptatives.
+12. **Introduire une priorisation avancée de sélection de transactions** (package fee-rate, dépendances parent/enfant).
+13. **Ajouter une stratégie de protection horloge nœud** (median-time-past, détection de dérive locale, fallback NTP).
 
 ### Priorité P2 — Outillage développeur & exploitation
 
-11. **Structurer un dossier `docs/`** avec spécification protocolaire v1, runbook d'exploitation et guide incident.
-12. **Débuter l'API CLI** (`status`, `mine`, `send`, `getblock`, `gettx`) pour piloter le nœud sans modifier le code.
-13. **Ajouter des métriques exportables** (hauteur, hashrate local, taille mempool, reward estimée, supply courante).
-14. **Ajouter des logs structurés** pour les événements consensus (validation bloc, rejet tx, minage réussi, erreurs invariants).
-15. **Documenter un plan de test reproductible** (scripts build+test, seed fixe, cas limite, checklist release).
+14. **Structurer un dossier `docs/`** avec spécification protocolaire v1, runbook d'exploitation et guide incident.
+15. **Débuter l'API CLI** (`status`, `mine`, `send`, `getblock`, `gettx`) pour piloter le nœud sans modifier le code.
+16. **Ajouter des métriques exportables** (hauteur, hashrate local, taille mempool, reward estimée, supply courante).
+17. **Ajouter des logs structurés** pour les événements consensus (validation bloc, rejet tx, minage réussi, erreurs invariants).
+18. **Documenter un plan de test reproductible** (scripts build+test, seed fixe, cas limite, checklist release).
+19. **Ajouter des scénarios de chaos engineering local** (faux timestamps, blocs mal formés, pression mempool) automatisés en CI.
+20. **Créer un tableau de compatibilité multi-plateforme** (Linux/macOS/Windows, versions compilateur, sanitizers).
 
 ### Priorité P3 — Préparation réseau & persistance
 
-16. **Créer une couche de persistance locale** (blocs + index minimal) avec reprise après crash.
-17. **Mettre en place un format de snapshot d'état** pour accélérer bootstrap et vérification.
-18. **Préparer le protocole P2P minimal** (`version`, `verack`, `inv`, `getdata`, `block`, `tx`) avec validation stricte des messages.
-19. **Définir une stratégie de gestion des forks/réorgs** (travail cumulé, règles d'adoption, gestion d'orphelins).
-20. **Planifier un devnet multi-nœuds** avec objectifs de performance et scénarios d'attaque simulés.
+21. **Créer une couche de persistance locale** (blocs + index minimal) avec reprise après crash.
+22. **Mettre en place un format de snapshot d'état** pour accélérer bootstrap et vérification.
+23. **Préparer le protocole P2P minimal** (`version`, `verack`, `inv`, `getdata`, `block`, `tx`) avec validation stricte des messages.
+24. **Définir une stratégie de gestion des forks/réorgs** (travail cumulé, règles d'adoption, gestion d'orphelins).
+25. **Planifier un devnet multi-nœuds** avec objectifs de performance et scénarios d'attaque simulés.
+26. **Préparer un mode de stockage append-only avec checksums** pour détecter toute corruption disque silencieuse.
+27. **Définir une stratégie de bootstrapping sécurisé** (checkpoints signés, validation progressive, reprise interrompue).

@@ -3,6 +3,7 @@
 #include "block.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -10,6 +11,8 @@ class Blockchain {
 public:
     static constexpr double kMaxSupply = 29'000'000.0;
     static constexpr std::size_t kHalvingInterval = 100;
+    static constexpr std::uint64_t kMaxFutureDriftSeconds = 2 * 60 * 60;
+    static constexpr double kMinRelayFee = 0.0001;
 
     explicit Blockchain(unsigned int difficulty = 4,
                         double miningReward = 12.5,
@@ -32,6 +35,7 @@ public:
 
 private:
     [[nodiscard]] double blockSubsidyAtHeight(std::size_t height) const;
+    [[nodiscard]] bool isTimestampAcceptable(std::uint64_t timestamp) const;
 
     unsigned int difficulty_;
     double miningReward_;
