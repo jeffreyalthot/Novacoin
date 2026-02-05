@@ -48,6 +48,7 @@ public:
     static constexpr std::size_t kHalvingInterval = consensus::kHalvingInterval;
     static constexpr std::uint64_t kMaxFutureDriftSeconds = consensus::kMaxFutureDriftSeconds;
     static constexpr std::uint64_t kTargetBlockTimeSeconds = consensus::kTargetBlockTimeSeconds;
+    static constexpr std::uint64_t kMempoolExpirySeconds = consensus::kMempoolExpirySeconds;
     static constexpr std::size_t kDifficultyAdjustmentInterval = consensus::kDifficultyAdjustmentInterval;
     static constexpr unsigned int kMinDifficulty = consensus::kMinDifficulty;
     static constexpr unsigned int kMaxDifficulty = consensus::kMaxDifficulty;
@@ -92,6 +93,8 @@ public:
 private:
     [[nodiscard]] Amount blockSubsidyAtHeight(std::size_t height) const;
     [[nodiscard]] bool isTimestampAcceptable(std::uint64_t timestamp) const;
+    [[nodiscard]] bool isMempoolTransactionExpired(const Transaction& tx, std::uint64_t now) const;
+    void pruneExpiredPendingTransactions();
     [[nodiscard]] unsigned int expectedDifficultyAtHeight(std::size_t height,
                                                           const std::vector<Block>& referenceChain) const;
     [[nodiscard]] bool isChainValid(const std::vector<Block>& candidateChain) const;
