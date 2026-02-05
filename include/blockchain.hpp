@@ -51,6 +51,17 @@ struct BlockHeaderInfo {
     unsigned int difficulty = 0;
 };
 
+struct BlockSummary {
+    std::uint64_t index = 0;
+    std::string hash;
+    std::string previousHash;
+    std::uint64_t timestamp = 0;
+    unsigned int difficulty = 0;
+    std::size_t transactionCount = 0;
+    std::size_t userTransactionCount = 0;
+    Amount totalFees = 0;
+};
+
 class Blockchain {
 public:
     static constexpr Amount kMaxSupply = consensus::kMaxSupply;
@@ -100,6 +111,9 @@ public:
         const std::vector<std::string>& locatorHashes,
         std::size_t maxCount,
         const std::string& stopHash) const;
+    [[nodiscard]] std::optional<BlockSummary> getBlockSummaryByHeight(std::size_t height) const;
+    [[nodiscard]] std::optional<BlockSummary> getBlockSummaryByHash(const std::string& hash) const;
+    [[nodiscard]] std::vector<BlockSummary> getRecentBlockSummaries(std::size_t maxCount) const;
     [[nodiscard]] bool tryAdoptChain(const std::vector<Block>& candidateChain);
     [[nodiscard]] const std::vector<Block>& getChain() const;
     [[nodiscard]] const std::vector<Transaction>& getPendingTransactions() const;
@@ -121,6 +135,7 @@ private:
     [[nodiscard]] std::size_t commonPrefixLength(const std::vector<Block>& lhs,
                                                  const std::vector<Block>& rhs) const;
     [[nodiscard]] std::optional<std::size_t> findBlockHeightByHash(const std::string& hash) const;
+    [[nodiscard]] BlockSummary makeBlockSummary(const Block& block) const;
 
     unsigned int initialDifficulty_;
     Amount miningReward_;
