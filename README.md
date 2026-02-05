@@ -8,6 +8,22 @@ Construire **Novacoin** comme une blockchain **Proof of Work (PoW)** robuste, pr
 
 Ce README sert de **plan directeur complet** pour poser les bases techniques, économiques, de sécurité et d'exploitation du réseau.
 
+## État actuel de la roadmap (mise à jour)
+
+- ✅ **Phase 1 (noyau single-node)** : chaîne locale, mempool, minage PoW, validation globale.
+- ✅ **Phase 2 (économie NOVA / hard cap)** : récompense + frais bornés, halving, plafond strict `29M`.
+- 🟡 **Phase 3 (consensus PoW production-ready)** :
+  - ✅ validation de timestamp futur borné,
+  - ✅ ajustement dynamique de difficulté par fenêtre,
+  - ⏳ réorganisations de chaîne/fork-choice à implémenter.
+- ⏳ **Phases 4 à 9** : en attente (réseau P2P, persistance, wallet, API/CLI, observabilité, audit, testnet/mainnet).
+
+### Prochain incrément recommandé
+
+1. Implémenter une structure de *block index* avec cumul de travail.
+2. Introduire une règle de sélection de chaîne canonique (most cumulative work).
+3. Ajouter des tests d'intégration orientés forks/réorg.
+
 ---
 
 ## Principes fondateurs

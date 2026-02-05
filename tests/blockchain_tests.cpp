@@ -144,6 +144,20 @@ void testAmountConversionRoundTrip() {
                "La conversion satoshis -> NOVA doit etre stable.");
 }
 
+void testDifficultyRetargetIncreasesWhenBlocksTooFast() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 3};
+
+    for (std::size_t i = 0; i < Blockchain::kDifficultyAdjustmentInterval; ++i) {
+        chain.minePendingTransactions("miner");
+    }
+
+    assertTrue(chain.getCurrentDifficulty() >= 2,
+               "La difficulte courante doit augmenter apres une fenetre de blocs trop rapide.");
+    assertTrue(chain.estimateNextDifficulty() == chain.getCurrentDifficulty(),
+               "Hors point de retarget, la prochaine difficulte doit rester stable.");
+    assertTrue(chain.isValid(), "La chaine doit rester valide apres retarget de difficulte.");
+}
+
 } // namespace
 
 int main() {
@@ -157,6 +171,7 @@ int main() {
         testRejectFutureTimestampTransaction();
         testTemplatePrioritizesHigherFees();
         testAmountConversionRoundTrip();
+        testDifficultyRetargetIncreasesWhenBlocksTooFast();
         std::cout << "Tous les tests Novacoin sont passes.\n";
         return 0;
     } catch (const std::exception& ex) {

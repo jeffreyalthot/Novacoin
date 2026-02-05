@@ -31,18 +31,22 @@ std::string difficultyPrefix(unsigned int difficulty) {
 }
 } // namespace
 
-Block::Block(std::uint64_t index, std::string previousHash, std::vector<Transaction> transactions)
+Block::Block(std::uint64_t index,
+             std::string previousHash,
+             std::vector<Transaction> transactions,
+             unsigned int difficulty)
     : index_(index),
       previousHash_(std::move(previousHash)),
       transactions_(std::move(transactions)),
       timestamp_(nowSeconds()),
       nonce_(0),
+      difficulty_(difficulty),
       hash_() {
     hash_ = computeHash();
 }
 
-void Block::mine(unsigned int difficulty) {
-    const std::string targetPrefix = difficultyPrefix(difficulty);
+void Block::mine() {
+    const std::string targetPrefix = difficultyPrefix(difficulty_);
 
     do {
         ++nonce_;
@@ -50,8 +54,8 @@ void Block::mine(unsigned int difficulty) {
     } while (hash_.compare(0, targetPrefix.size(), targetPrefix) != 0);
 }
 
-bool Block::hasValidHash(unsigned int difficulty) const {
-    const std::string targetPrefix = difficultyPrefix(difficulty);
+bool Block::hasValidHash() const {
+    const std::string targetPrefix = difficultyPrefix(difficulty_);
     return hash_ == computeHash() && hash_.compare(0, targetPrefix.size(), targetPrefix) == 0;
 }
 
@@ -60,11 +64,12 @@ const std::string& Block::getPreviousHash() const { return previousHash_; }
 const std::string& Block::getHash() const { return hash_; }
 std::uint64_t Block::getNonce() const { return nonce_; }
 std::uint64_t Block::getTimestamp() const { return timestamp_; }
+unsigned int Block::getDifficulty() const { return difficulty_; }
 const std::vector<Transaction>& Block::getTransactions() const { return transactions_; }
 
 std::string Block::computeHash() const {
     std::ostringstream payload;
-    payload << index_ << previousHash_ << timestamp_ << nonce_;
+    payload << index_ << previousHash_ << timestamp_ << nonce_ << difficulty_;
     for (const auto& tx : transactions_) {
         payload << tx.serialize();
     }
