@@ -3,7 +3,9 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <iomanip>
 #include <limits>
+#include <sstream>
 #include <stdexcept>
 #include <unordered_map>
 
@@ -15,6 +17,10 @@ std::uint64_t nowSeconds() {
 
 bool isTransactionShapeValid(const Transaction& tx) {
     if (tx.from.empty() || tx.to.empty()) {
+        return false;
+    }
+
+    if (!std::isfinite(tx.amount) || !std::isfinite(tx.fee)) {
         return false;
     }
 
@@ -71,6 +77,15 @@ void Blockchain::createTransaction(const Transaction& tx) {
 
     if (tx.amount + tx.fee > getAvailableBalance(tx.from)) {
         throw std::invalid_argument("Fonds insuffisants pour créer cette transaction (montant + frais).");
+    }
+
+    const std::string txId = tx.id();
+    const auto isDuplicate = std::any_of(
+        pendingTransactions_.begin(), pendingTransactions_.end(),
+        [&txId](const Transaction& candidate) { return candidate.id() == txId; });
+
+    if (isDuplicate) {
+        throw std::invalid_argument("Transaction en double detectee dans la mempool locale.");
     }
 
     pendingTransactions_.push_back(tx);
@@ -268,6 +283,25 @@ bool Blockchain::isValid() const {
     }
 
     return true;
+}
+
+
+std::vector<Transaction> Blockchain::getPendingTransactionsForBlockTemplate() const {
+    const std::size_t maxUserTransactions = maxTransactionsPerBlock_ > 0 ? maxTransactionsPerBlock_ - 1 : 0;
+    const std::size_t txCount = std::min(maxUserTransactions, pendingTransactions_.size());
+    return std::vector<Transaction>(pendingTransactions_.begin(),
+                                    pendingTransactions_.begin() + static_cast<std::ptrdiff_t>(txCount));
+}
+
+std::string Blockchain::getChainSummary() const {
+    std::ostringstream out;
+    out << std::fixed << std::setprecision(8);
+    out << "Novacoin summary\n";
+    out << "- blocks=" << getBlockCount() << "\n";
+    out << "- total_supply=" << getTotalSupply() << " / " << kMaxSupply << "\n";
+    out << "- next_reward_estimate=" << estimateNextMiningReward() << "\n";
+    out << "- pending_transactions=" << pendingTransactions_.size() << "\n";
+    return out.str();
 }
 
 const std::vector<Block>& Blockchain::getChain() const { return chain_; }

@@ -53,6 +53,36 @@ void testRewardIncludesFeesBoundedByCap() {
     assertTrue(std::abs(chain.getBalance("miner") - 90.0) < 1e-9, "Le solde mineur doit refleter depense, frais et nouvelle coinbase.");
     assertTrue(chain.isValid(), "La chaine doit rester valide avec frais minés.");
 }
+
+void testRejectDuplicatePendingTransaction() {
+    Blockchain chain{1, 25.0, 3};
+    chain.minePendingTransactions("miner");
+
+    const Transaction tx{"miner", "alice", 3.0, nowSeconds(), 0.1};
+    chain.createTransaction(tx);
+
+    bool threw = false;
+    try {
+        chain.createTransaction(tx);
+    } catch (const std::invalid_argument&) {
+        threw = true;
+    }
+
+    assertTrue(threw, "Une transaction dupliquee doit etre rejetee de la mempool.");
+}
+
+void testBlockTemplateRespectsCapacity() {
+    Blockchain chain{1, 25.0, 3};
+    chain.minePendingTransactions("miner");
+
+    chain.createTransaction(Transaction{"miner", "alice", 1.0, nowSeconds(), 0.1});
+    chain.createTransaction(Transaction{"miner", "bob", 1.0, nowSeconds(), 0.1});
+    chain.createTransaction(Transaction{"miner", "charlie", 1.0, nowSeconds(), 0.1});
+
+    const auto templateTxs = chain.getPendingTransactionsForBlockTemplate();
+    assertTrue(templateTxs.size() == 2, "Le template de bloc doit respecter maxTransactionsPerBlock-1.");
+}
+
 } // namespace
 
 int main() {
@@ -60,6 +90,8 @@ int main() {
         testHardCapRespectedByMining();
         testRejectNetworkTransactionCreation();
         testRewardIncludesFeesBoundedByCap();
+        testRejectDuplicatePendingTransaction();
+        testBlockTemplateRespectsCapacity();
         std::cout << "Tous les tests Novacoin sont passes.\n";
         return 0;
     } catch (const std::exception& ex) {

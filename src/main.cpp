@@ -43,6 +43,9 @@ int main() {
         std::cout << "Solde de alice: " << novacoin.getBalance("alice") << "\n";
         std::cout << "Solde disponible de miner1: " << novacoin.getAvailableBalance("miner1") << "\n";
         std::cout << "Transactions en attente: " << novacoin.getPendingTransactions().size() << "\n";
+        std::cout << "Template prochain bloc (tx user): "
+                  << novacoin.getPendingTransactionsForBlockTemplate().size() << "\n";
+        std::cout << novacoin.getChainSummary();
 
         novacoin.minePendingTransactions("miner2");
         std::cout << "Après minage fractionné (capacité=2), blocs: " << novacoin.getBlockCount()

@@ -292,15 +292,44 @@ cmake --build build
 - Intégration d'un **hard cap effectif** (`29_000_000.00000000 NOVA`) appliqué pendant la création de transactions `network`, le minage et la validation complète de chaîne.
 - Ajout d'une **récompense de bloc décroissante** (halving simplifié) pour amorcer la politique monétaire long terme.
 - Passage du minage à une coinbase incluse directement dans le bloc miné (récompense + frais), avec plafond strict.
-- Mise en place de **tests automatisés C++** (hard cap, rejet de mint illégal, récompenses avec frais).
+- Durcissement de la validation des transactions avec rejet des montants/frais non finis (`NaN`, `Inf`) et maintien des contraintes `amount` / `fee`.
+- Ajout d'un identifiant de transaction local (`Transaction::id`) pour améliorer la traçabilité et permettre la détection de doublons.
+- Rejet des **transactions dupliquées en mempool** (même payload sérialisé).
+- Ajout d'un **template local de sélection de transactions** (`getPendingTransactionsForBlockTemplate`) pour préparer l'API mineur.
+- Ajout d'un **résumé de chaîne** (`getChainSummary`) pour l'observabilité minimale côté CLI.
+- Extension de la suite de tests automatisés C++ (hard cap, rejet de mint illégal, récompenses avec frais, doublons mempool, capacité template bloc).
 - Mise à jour du build CMake pour séparer `novacoin_core`, exécutable principal et exécutable de tests.
 
-## Travaux supplémentaires à effectuer la prochaine fois
+## Travaux supplémentaires à effectuer (roadmap enrichie)
 
-1. **Geler les paramètres monétaires v1** dans un fichier de config consensus (halving interval, récompense initiale, précision satoshi NOVA).
-2. **Remplacer les montants `double` par des unités entières** (satoshi NOVA) pour éliminer les risques d'arrondi.
-3. **Introduire une vraie transaction coinbase** avec format dédié et règles explicites par hauteur.
-4. **Ajouter une suite de tests de simulation longue** (plusieurs centaines de milliers de blocs) pour prouver l'extinction des récompenses.
-5. **Créer un module de sérialisation canonique** (versionnage, hash stable inter-plateformes) en préparation du réseau P2P.
-6. **Structurer un dossier `docs/`** avec spécification protocolaire v1 et runbook d'exploitation.
-7. **Débuter l'API CLI** (`status`, `mine`, `send`, `getblock`) pour piloter le nœud sans modifier le code.
+### Priorité P0 — Consensus & sécurité monétaire
+
+1. **Geler les paramètres monétaires v1** dans un fichier de config consensus immuable (halving interval, récompense initiale, précision satoshi NOVA).
+2. **Remplacer les montants `double` par des unités entières** (satoshi NOVA) pour éliminer définitivement les risques d'arrondi.
+3. **Introduire une vraie transaction coinbase** avec format dédié, maturité configurable et règles explicites par hauteur.
+4. **Rendre déterministe la sérialisation des transactions et blocs** (endianness, tailles fixes/varint, versionnage) pour préparer un hash inter-plateformes robuste.
+5. **Ajouter une vérification explicite de non-overflow arithmétique** sur tous les calculs monétaires et cumuls de frais/récompenses.
+
+### Priorité P1 — Robustesse nœud local
+
+6. **Ajouter une suite de tests de simulation longue** (plusieurs centaines de milliers de blocs) pour prouver extinction des récompenses et invariants de supply.
+7. **Valider les timestamps blocs/transactions** (fenêtres max/min, monotonicité partielle, règles anti-dérive).
+8. **Implémenter une politique de mempool** (frais minimum, remplacement optionnel, limites par adresse et taille globale).
+9. **Renforcer la logique anti-double-dépense locale** entre transactions pending conflictuelles.
+10. **Ajouter un mode relecture/validation complète** au démarrage avec rapport d'erreurs structuré.
+
+### Priorité P2 — Outillage développeur & exploitation
+
+11. **Structurer un dossier `docs/`** avec spécification protocolaire v1, runbook d'exploitation et guide incident.
+12. **Débuter l'API CLI** (`status`, `mine`, `send`, `getblock`, `gettx`) pour piloter le nœud sans modifier le code.
+13. **Ajouter des métriques exportables** (hauteur, hashrate local, taille mempool, reward estimée, supply courante).
+14. **Ajouter des logs structurés** pour les événements consensus (validation bloc, rejet tx, minage réussi, erreurs invariants).
+15. **Documenter un plan de test reproductible** (scripts build+test, seed fixe, cas limite, checklist release).
+
+### Priorité P3 — Préparation réseau & persistance
+
+16. **Créer une couche de persistance locale** (blocs + index minimal) avec reprise après crash.
+17. **Mettre en place un format de snapshot d'état** pour accélérer bootstrap et vérification.
+18. **Préparer le protocole P2P minimal** (`version`, `verack`, `inv`, `getdata`, `block`, `tx`) avec validation stricte des messages.
+19. **Définir une stratégie de gestion des forks/réorgs** (travail cumulé, règles d'adoption, gestion d'orphelins).
+20. **Planifier un devnet multi-nœuds** avec objectifs de performance et scénarios d'attaque simulés.
