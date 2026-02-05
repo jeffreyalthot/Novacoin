@@ -783,6 +783,43 @@ NetworkStats Blockchain::getNetworkStats() const {
     return stats;
 }
 
+MempoolStats Blockchain::getMempoolStats() const {
+    MempoolStats stats;
+    stats.transactionCount = pendingTransactions_.size();
+
+    if (pendingTransactions_.empty()) {
+        return stats;
+    }
+
+    std::vector<Amount> fees;
+    fees.reserve(pendingTransactions_.size());
+
+    stats.minFee = pendingTransactions_.front().fee;
+    stats.maxFee = pendingTransactions_.front().fee;
+
+    for (const auto& tx : pendingTransactions_) {
+        if (!safeAdd(stats.totalAmount, tx.amount, stats.totalAmount) ||
+            !safeAdd(stats.totalFees, tx.fee, stats.totalFees)) {
+            throw std::overflow_error("Overflow mempool totals.");
+        }
+
+        stats.minFee = std::min(stats.minFee, tx.fee);
+        stats.maxFee = std::max(stats.maxFee, tx.fee);
+        fees.push_back(tx.fee);
+    }
+
+    std::sort(fees.begin(), fees.end());
+    const std::size_t mid = fees.size() / 2;
+    if (fees.size() % 2 == 1) {
+        stats.medianFee = fees[mid];
+    } else {
+        stats.medianFee = fees[mid - 1] + (fees[mid] - fees[mid - 1]) / 2;
+    }
+
+    return stats;
+}
+
+
 
 std::vector<BlockHeaderInfo> Blockchain::getHeadersFromHeight(std::size_t startHeight,
                                                               std::size_t maxCount) const {
@@ -944,6 +981,13 @@ std::string Blockchain::getChainSummary() const {
     out << "- last_reorg_depth=" << getLastReorgDepth() << "\n";
     out << "- last_fork_height=" << getLastForkHeight() << "\n";
     out << "- pending_transactions=" << pendingTransactions_.size() << "\n";
+
+    const MempoolStats mempoolStats = getMempoolStats();
+    out << "- mempool_total_amount=" << Transaction::toNOVA(mempoolStats.totalAmount) << "\n";
+    out << "- mempool_total_fees=" << Transaction::toNOVA(mempoolStats.totalFees) << "\n";
+    out << "- mempool_min_fee=" << Transaction::toNOVA(mempoolStats.minFee) << "\n";
+    out << "- mempool_max_fee=" << Transaction::toNOVA(mempoolStats.maxFee) << "\n";
+    out << "- mempool_median_fee=" << Transaction::toNOVA(mempoolStats.medianFee) << "\n";
 
     const NetworkStats networkStats = getNetworkStats();
     out << "- network_user_transactions=" << networkStats.userTransactionCount << "\n";
