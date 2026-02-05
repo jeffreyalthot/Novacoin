@@ -35,15 +35,20 @@ public:
     [[nodiscard]] std::size_t getBlockCount() const;
     [[nodiscard]] std::vector<Transaction> getTransactionHistory(const std::string& address) const;
     [[nodiscard]] bool isValid() const;
+    [[nodiscard]] std::uint64_t getCumulativeWork() const;
     [[nodiscard]] std::string getChainSummary() const;
     [[nodiscard]] std::vector<Transaction> getPendingTransactionsForBlockTemplate() const;
+    [[nodiscard]] bool tryAdoptChain(const std::vector<Block>& candidateChain);
     [[nodiscard]] const std::vector<Block>& getChain() const;
     [[nodiscard]] const std::vector<Transaction>& getPendingTransactions() const;
 
 private:
     [[nodiscard]] Amount blockSubsidyAtHeight(std::size_t height) const;
     [[nodiscard]] bool isTimestampAcceptable(std::uint64_t timestamp) const;
-    [[nodiscard]] unsigned int expectedDifficultyAtHeight(std::size_t height) const;
+    [[nodiscard]] unsigned int expectedDifficultyAtHeight(std::size_t height,
+                                                          const std::vector<Block>& referenceChain) const;
+    [[nodiscard]] bool isChainValid(const std::vector<Block>& candidateChain) const;
+    [[nodiscard]] std::uint64_t computeCumulativeWork(const std::vector<Block>& chain) const;
 
     unsigned int initialDifficulty_;
     Amount miningReward_;
