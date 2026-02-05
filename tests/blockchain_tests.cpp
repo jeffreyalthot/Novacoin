@@ -887,6 +887,36 @@ void testIdenticalChainIsNotCountedAsReorg() {
     assertTrue(chain.getReorgCount() == 0, "Une chaine identique ne doit pas incrementer les metriques de reorg.");
 }
 
+
+void testEstimateSupplyAtHeightMonotonicAndCapped() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 4};
+
+    const Amount h1 = chain.estimateSupplyAtHeight(1);
+    const Amount hHalving = chain.estimateSupplyAtHeight(Blockchain::kHalvingInterval);
+    const Amount hFar = chain.estimateSupplyAtHeight(1'000'000);
+
+    assertTrue(h1 > 0, "La projection monetaire au bloc 1 doit etre strictement positive.");
+    assertTrue(hHalving >= h1, "La supply projetee doit etre monotone croissante avec la hauteur.");
+    assertTrue(hFar <= Blockchain::kMaxSupply, "La supply projetee ne doit jamais depasser le hard cap.");
+}
+
+void testMonetaryProjectionExposesConsistentFields() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 4};
+
+    const std::size_t targetHeight = Blockchain::kHalvingInterval + 1;
+    const auto projection = chain.getMonetaryProjection(targetHeight);
+
+    assertTrue(projection.height == targetHeight, "La projection doit exposer la hauteur demandee.");
+    assertAmountEq(projection.projectedSupply,
+                   chain.estimateSupplyAtHeight(targetHeight),
+                   "La supply projetee du snapshot doit correspondre a estimateSupplyAtHeight.");
+    assertAmountEq(projection.remainingIssuable,
+                   Blockchain::kMaxSupply - projection.projectedSupply,
+                   "Le restant emissible doit etre coherent avec le hard cap.");
+    assertTrue(projection.nextHalvingHeight == 2 * Blockchain::kHalvingInterval,
+               "La prochaine hauteur de halving doit etre alignee sur l'intervalle consensus.");
+}
+
 void testRejectChainFromDifferentGenesis() {
     Blockchain chain{1, Transaction::fromNOVA(25.0), 4};
     chain.minePendingTransactions("miner");
@@ -948,6 +978,8 @@ int main() {
         testRejectChainWithCoinbaseNotInLastPosition();
         testRejectChainWithMultipleCoinbaseTransactions();
         testRejectChainContainingDuplicateUserTransactionIds();
+        testEstimateSupplyAtHeightMonotonicAndCapped();
+        testMonetaryProjectionExposesConsistentFields();
         testRejectChainFromDifferentGenesis();
         std::cout << "Tous les tests Novacoin sont passes.\n";
         return 0;

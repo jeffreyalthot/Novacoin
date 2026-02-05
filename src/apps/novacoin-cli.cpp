@@ -36,7 +36,8 @@ void printUsage() {
               << "  novacoin-cli block <height|hash>\n"
               << "  novacoin-cli blocks <max_count>\n"
               << "  novacoin-cli tx <txid>\n"
-              << "  novacoin-cli consensus\n";
+              << "  novacoin-cli consensus\n"
+              << "  novacoin-cli monetary [height]\n";
 }
 
 double parseDouble(const std::string& raw, const std::string& field) {
@@ -409,6 +410,29 @@ int main(int argc, char* argv[]) {
                       << "  reorg_count=" << chain.getReorgCount() << "\n"
                       << "  last_reorg_depth=" << chain.getLastReorgDepth() << "\n"
                       << "  last_fork_height=" << chain.getLastForkHeight() << "\n";
+            return 0;
+        }
+
+        if (command == "monetary") {
+            if (argc > 3) {
+                printUsage();
+                return 1;
+            }
+
+            const std::size_t height = argc == 3
+                ? parseSize(argv[2], "height")
+                : (chain.getBlockCount() > 0 ? chain.getBlockCount() - 1 : 0);
+            const auto projection = chain.getMonetaryProjection(height);
+            std::cout << "Monetary projection\n"
+                      << "  height=" << projection.height << "\n"
+                      << "  subsidy_current=" << std::fixed << std::setprecision(8)
+                      << Transaction::toNOVA(projection.currentSubsidy) << " NOVA\n"
+                      << "  projected_supply=" << Transaction::toNOVA(projection.projectedSupply)
+                      << " NOVA\n"
+                      << "  issuance_remaining=" << Transaction::toNOVA(projection.remainingIssuable)
+                      << " NOVA\n"
+                      << "  next_halving_height=" << projection.nextHalvingHeight << "\n"
+                      << "  next_subsidy=" << Transaction::toNOVA(projection.nextSubsidy) << " NOVA\n";
             return 0;
         }
 
