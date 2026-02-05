@@ -16,6 +16,23 @@ target_include_directories(novacoin_core PUBLIC include)
 add_executable(novacoin src/main.cpp)
 target_link_libraries(novacoin PRIVATE novacoin_core)
 
+
+add_executable(novacoin-tx src/apps/novacoin-tx.cpp)
+target_link_libraries(novacoin-tx PRIVATE novacoin_core)
+
+add_executable(novacoin-wallet src/apps/novacoin-wallet.cpp)
+target_link_libraries(novacoin-wallet PRIVATE novacoin_core)
+
+add_executable(novacoin-cli src/apps/novacoin-cli.cpp)
+target_link_libraries(novacoin-cli PRIVATE novacoin_core)
+
+add_executable(novacoind src/apps/novacoind.cpp)
+target_link_libraries(novacoind PRIVATE novacoin_core)
+
+add_executable(novacoin-regtest src/apps/novacoin-regtest.cpp)
+target_link_libraries(novacoin-regtest PRIVATE novacoin_core)
+
+
 if (MSVC)
     target_compile_options(novacoin_core PRIVATE /W4)
 else()

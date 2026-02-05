@@ -10,6 +10,18 @@ Ce README sert de **plan directeur complet** pour poser les bases techniques, é
 
 ## État actuel de la roadmap (mise à jour)
 
+## Outils CLI disponibles
+
+Le projet fournit maintenant plusieurs binaires cohérents avec une future architecture multi-composants :
+
+- `novacoin` : démonstration principale du noyau blockchain.
+- `novacoind` : simulation d'un nœud daemon.
+- `novacoin-cli` : commandes de base (`mine`, `send`, `balance`, `summary`).
+- `novacoin-wallet` : consultation simple d'un wallet local.
+- `novacoin-tx` : construction/inspection d'une transaction.
+- `novacoin-regtest` : scénario de test local déterministe.
+
+
 - ✅ **Phase 1 (noyau single-node)** : chaîne locale, mempool, minage PoW, validation globale.
 - ✅ **Phase 2 (économie NOVA / hard cap)** : récompense + frais bornés, halving, plafond strict `29M`.
 - 🟡 **Phase 3 (consensus PoW production-ready)** :
