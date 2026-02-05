@@ -38,6 +38,7 @@ void printUsage() {
               << "  novacoin-cli block <height|hash>\n"
               << "  novacoin-cli blocks <max_count>\n"
               << "  novacoin-cli tx <txid>\n"
+              << "  novacoin-cli history <address> [limit] [--confirmed-only]\n"
               << "  novacoin-cli consensus\n"
               << "  novacoin-cli monetary [height]\n";
 }
@@ -434,6 +435,44 @@ int main(int argc, char* argv[]) {
                 std::cout << " status=mempool";
             }
             std::cout << "\n";
+            return 0;
+        }
+
+        if (command == "history") {
+            if (argc < 3 || argc > 5) {
+                printUsage();
+                return 1;
+            }
+
+            const std::string address = argv[2];
+            std::size_t limit = 0;
+            bool includePending = true;
+
+            for (int i = 3; i < argc; ++i) {
+                const std::string arg = argv[i];
+                if (arg == "--confirmed-only") {
+                    includePending = false;
+                    continue;
+                }
+                limit = parseSize(arg, "limit");
+            }
+
+            const auto entries = chain.getTransactionHistoryDetailed(address, limit, includePending);
+            std::cout << "history address=" << address << " count=" << entries.size() << "\n";
+            for (std::size_t i = 0; i < entries.size(); ++i) {
+                const auto& e = entries[i];
+                std::cout << "  #" << (i + 1) << " id=" << e.tx.id() << " from=" << e.tx.from
+                          << " to=" << e.tx.to << " amount=" << std::fixed << std::setprecision(8)
+                          << Transaction::toNOVA(e.tx.amount) << " NOVA fee=" << Transaction::toNOVA(e.tx.fee)
+                          << " NOVA ts=" << e.tx.timestamp;
+                if (e.isConfirmed) {
+                    std::cout << " status=confirmed block_height=" << e.blockHeight.value_or(0)
+                              << " confirmations=" << e.confirmations;
+                } else {
+                    std::cout << " status=mempool";
+                }
+                std::cout << "\n";
+            }
             return 0;
         }
 
