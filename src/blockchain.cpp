@@ -133,6 +133,14 @@ void Blockchain::createTransaction(const Transaction& tx) {
     }
 
     const std::string txId = tx.id();
+    for (const auto& block : chain_) {
+        for (const auto& confirmedTx : block.getTransactions()) {
+            if (confirmedTx.from != "network" && confirmedTx.id() == txId) {
+                throw std::invalid_argument("Transaction deja confirmee dans la chaine.");
+            }
+        }
+    }
+
     const auto isDuplicate = std::any_of(
         pendingTransactions_.begin(), pendingTransactions_.end(),
         [&txId](const Transaction& candidate) { return candidate.id() == txId; });
@@ -361,6 +369,7 @@ bool Blockchain::isChainValid(const std::vector<Block>& candidateChain) const {
     }
 
     std::unordered_map<std::string, Amount> balances;
+    std::unordered_set<std::string> seenUserTransactionIds;
     Amount cumulativeSupply = 0;
 
     for (std::size_t i = 0; i < candidateChain.size(); ++i) {
@@ -405,6 +414,12 @@ bool Blockchain::isChainValid(const std::vector<Block>& candidateChain) const {
             }
 
             if (tx.from != "network") {
+                const std::string txId = tx.id();
+                if (seenUserTransactionIds.find(txId) != seenUserTransactionIds.end()) {
+                    return false;
+                }
+                seenUserTransactionIds.insert(txId);
+
                 if (tx.fee < kMinRelayFee) {
                     return false;
                 }

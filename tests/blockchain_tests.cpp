@@ -75,6 +75,24 @@ void testRejectDuplicatePendingTransaction() {
     assertTrue(threw, "Une transaction en double doit etre rejetee dans la mempool.");
 }
 
+void testRejectAlreadyConfirmedTransactionCreation() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 3};
+    chain.minePendingTransactions("miner");
+
+    const Transaction tx{"miner", "alice", Transaction::fromNOVA(2.0), nowSeconds(), Transaction::fromNOVA(0.1)};
+    chain.createTransaction(tx);
+    chain.minePendingTransactions("miner");
+
+    bool threw = false;
+    try {
+        chain.createTransaction(tx);
+    } catch (const std::invalid_argument&) {
+        threw = true;
+    }
+
+    assertTrue(threw, "Une transaction deja confirmee ne doit pas etre reinjectable en mempool.");
+}
+
 void testBlockTemplateRespectsCapacity() {
     Blockchain chain{1, Transaction::fromNOVA(25.0), 3};
     chain.minePendingTransactions("miner");
@@ -386,6 +404,34 @@ void testDifficultyRetargetIncreasesWhenBlocksTooFast() {
     assertTrue(chain.isValid(), "La chaine doit rester valide apres retarget de difficulte.");
 }
 
+void testRejectChainContainingDuplicateUserTransactionIds() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 4};
+    chain.minePendingTransactions("miner");
+
+    const Transaction duplicated{"miner", "alice", Transaction::fromNOVA(1.0), nowSeconds(),
+                                 Transaction::fromNOVA(0.2)};
+
+    std::vector<Block> candidate = chain.getChain();
+    candidate.emplace_back(static_cast<std::uint64_t>(candidate.size()),
+                           candidate.back().getHash(),
+                           std::vector<Transaction>{
+                               duplicated,
+                               Transaction{"network", "alt-miner", Transaction::fromNOVA(25.0), nowSeconds(), 0}},
+                           1);
+    candidate.back().mine();
+
+    candidate.emplace_back(static_cast<std::uint64_t>(candidate.size()),
+                           candidate.back().getHash(),
+                           std::vector<Transaction>{
+                               duplicated,
+                               Transaction{"network", "alt-miner", Transaction::fromNOVA(25.0), nowSeconds(), 0}},
+                           1);
+    candidate.back().mine();
+
+    const bool adopted = chain.tryAdoptChain(candidate);
+    assertTrue(!adopted, "Une chaine contenant deux fois le meme txid utilisateur doit etre rejetee.");
+}
+
 } // namespace
 
 int main() {
@@ -394,6 +440,7 @@ int main() {
         testRejectNetworkTransactionCreation();
         testRewardIncludesFeesBoundedByCap();
         testRejectDuplicatePendingTransaction();
+        testRejectAlreadyConfirmedTransactionCreation();
         testBlockTemplateRespectsCapacity();
         testRejectTooLowFeeTransaction();
         testRejectFutureTimestampTransaction();
@@ -409,6 +456,7 @@ int main() {
         testNetworkStatsExposeChainActivity();
         testAmountConversionRoundTrip();
         testDifficultyRetargetIncreasesWhenBlocksTooFast();
+        testRejectChainContainingDuplicateUserTransactionIds();
         std::cout << "Tous les tests Novacoin sont passes.\n";
         return 0;
     } catch (const std::exception& ex) {
