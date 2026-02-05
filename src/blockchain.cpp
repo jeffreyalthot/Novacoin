@@ -446,6 +446,56 @@ std::vector<Transaction> Blockchain::getTransactionHistory(const std::string& ad
     return history;
 }
 
+std::vector<TransactionHistoryEntry> Blockchain::getTransactionHistoryDetailed(const std::string& address,
+                                                                                std::size_t limit,
+                                                                                bool includePending) const {
+    std::vector<TransactionHistoryEntry> history;
+
+    for (std::size_t remaining = chain_.size(); remaining > 0; --remaining) {
+        const std::size_t height = remaining - 1;
+        const auto& txs = chain_[height].getTransactions();
+        for (std::size_t txRemaining = txs.size(); txRemaining > 0; --txRemaining) {
+            const auto& tx = txs[txRemaining - 1];
+            if (tx.from != address && tx.to != address) {
+                continue;
+            }
+
+            TransactionHistoryEntry entry;
+            entry.tx = tx;
+            entry.isConfirmed = true;
+            entry.blockHeight = height;
+            entry.confirmations = chain_.size() - height;
+            history.push_back(entry);
+
+            if (limit != 0 && history.size() >= limit) {
+                return history;
+            }
+        }
+    }
+
+    if (includePending) {
+        for (std::size_t remaining = pendingTransactions_.size(); remaining > 0; --remaining) {
+            const auto& tx = pendingTransactions_[remaining - 1];
+            if (tx.from != address && tx.to != address) {
+                continue;
+            }
+
+            TransactionHistoryEntry entry;
+            entry.tx = tx;
+            entry.isConfirmed = false;
+            entry.blockHeight = std::nullopt;
+            entry.confirmations = 0;
+            history.push_back(entry);
+
+            if (limit != 0 && history.size() >= limit) {
+                return history;
+            }
+        }
+    }
+
+    return history;
+}
+
 bool Blockchain::isValid() const { return isChainValid(chain_); }
 
 

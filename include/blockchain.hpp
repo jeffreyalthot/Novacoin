@@ -69,6 +69,13 @@ struct TransactionLookup {
     std::optional<std::size_t> blockHeight;
 };
 
+struct TransactionHistoryEntry {
+    Transaction tx;
+    bool isConfirmed = false;
+    std::size_t confirmations = 0;
+    std::optional<std::size_t> blockHeight;
+};
+
 struct MonetaryProjection {
     std::size_t height = 0;
     Amount currentSubsidy = 0;
@@ -108,6 +115,9 @@ public:
     [[nodiscard]] std::uint64_t estimateNextMinimumTimestamp() const;
     [[nodiscard]] std::size_t getBlockCount() const;
     [[nodiscard]] std::vector<Transaction> getTransactionHistory(const std::string& address) const;
+    [[nodiscard]] std::vector<TransactionHistoryEntry> getTransactionHistoryDetailed(const std::string& address,
+                                                                                      std::size_t limit = 0,
+                                                                                      bool includePending = true) const;
     [[nodiscard]] bool isValid() const;
     [[nodiscard]] std::uint64_t getCumulativeWork() const;
     [[nodiscard]] std::string getChainSummary() const;

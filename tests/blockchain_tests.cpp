@@ -725,6 +725,60 @@ void testFindTransactionByIdForPendingAndUnknownTransaction() {
 }
 
 
+
+void testTransactionHistoryDetailedIncludesConfirmedAndPending() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 5};
+    chain.minePendingTransactions("miner");
+
+    const Transaction confirmed{"miner", "alice", Transaction::fromNOVA(1.0), nowSeconds(), Transaction::fromNOVA(0.2)};
+    chain.createTransaction(confirmed);
+    chain.minePendingTransactions("miner");
+
+    const Transaction pending{"alice", "bob", Transaction::fromNOVA(0.4), nowSeconds(), Transaction::fromNOVA(0.1)};
+    chain.createTransaction(pending);
+
+    const auto history = chain.getTransactionHistoryDetailed("alice");
+    assertTrue(history.size() == 2,
+               "L'historique detaille doit inclure tx confirmees et mempool pour une adresse.");
+    const auto confirmedIt = std::find_if(history.begin(), history.end(), [&](const TransactionHistoryEntry& entry) {
+        return entry.tx.id() == confirmed.id();
+    });
+    const auto pendingIt = std::find_if(history.begin(), history.end(), [&](const TransactionHistoryEntry& entry) {
+        return entry.tx.id() == pending.id();
+    });
+
+    assertTrue(confirmedIt != history.end() && confirmedIt->isConfirmed,
+               "La transaction confirmee doit exposer son statut confirme.");
+    assertTrue(confirmedIt->blockHeight.has_value() && confirmedIt->confirmations >= 1,
+               "Une tx confirmee doit exposer hauteur et confirmations.");
+    assertTrue(pendingIt != history.end() && !pendingIt->isConfirmed,
+               "La transaction mempool doit apparaitre avec status non confirme.");
+}
+
+void testTransactionHistoryDetailedSupportsLimitAndConfirmedOnly() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 6};
+    chain.minePendingTransactions("miner");
+
+    const Transaction tx1{"miner", "alice", Transaction::fromNOVA(1.0), nowSeconds(), Transaction::fromNOVA(0.1)};
+    const Transaction tx2{"miner", "alice", Transaction::fromNOVA(2.0), nowSeconds(), Transaction::fromNOVA(0.1)};
+    chain.createTransaction(tx1);
+    chain.createTransaction(tx2);
+    chain.minePendingTransactions("miner");
+
+    const Transaction pending{"alice", "carol", Transaction::fromNOVA(0.5), nowSeconds(), Transaction::fromNOVA(0.1)};
+    chain.createTransaction(pending);
+
+    const auto limited = chain.getTransactionHistoryDetailed("alice", 1, true);
+    assertTrue(limited.size() == 1,
+               "Le parametre limit doit borner strictement le nombre d'entrees detaillees.");
+
+    const auto confirmedOnly = chain.getTransactionHistoryDetailed("alice", 0, false);
+    assertTrue(std::all_of(confirmedOnly.begin(), confirmedOnly.end(), [](const TransactionHistoryEntry& e) {
+                   return e.isConfirmed;
+               }),
+               "Le mode confirmed-only ne doit renvoyer aucune transaction mempool.");
+}
+
 void testMempoolCapacityEvictsLowestFeeTransaction() {
     Blockchain chain{1, Transaction::fromNOVA(25.0), 2};
     chain.minePendingTransactions("miner");
@@ -963,6 +1017,8 @@ int main() {
         testRecentBlockSummariesAreOrderedFromTip();
         testFindTransactionByIdForConfirmedTransaction();
         testFindTransactionByIdForPendingAndUnknownTransaction();
+        testTransactionHistoryDetailedIncludesConfirmedAndPending();
+        testTransactionHistoryDetailedSupportsLimitAndConfirmedOnly();
         testMempoolCapacityEvictsLowestFeeTransaction();
         testMempoolCapacityRejectsTooLowFeeWhenFull();
         testFeeEstimateReturnsRelayFeeWhenMempoolEmptyOrTargetLarge();

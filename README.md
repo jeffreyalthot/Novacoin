@@ -16,7 +16,7 @@ Le projet fournit maintenant plusieurs binaires cohérents avec une future archi
 
 - `novacoin` : démonstration principale du noyau blockchain.
 - `novacoind` : simulation d'un nœud daemon.
-- `novacoin-cli` : commandes de base (`mine`, `send`, `balance`, `summary`) + observabilite locale (`address-stats`, `mempool-stats`, `top`, `consensus`) + outils de sync headers-first (`headers`, `locator`, `headers-sync`, `headers-sync-stop`, `block`, `blocks`).
+- `novacoin-cli` : commandes de base (`mine`, `send`, `balance`, `summary`) + observabilite locale (`address-stats`, `mempool-stats`, `top`, `consensus`) + exploration transactionnelle (`tx`, `history`) + outils de sync headers-first (`headers`, `locator`, `headers-sync`, `headers-sync-stop`, `block`, `blocks`).
 - `novacoin-wallet` : consultation simple d'un wallet local.
 - `novacoin-tx` : construction/inspection d'une transaction.
 - `novacoin-regtest` : scénario de test local déterministe.
