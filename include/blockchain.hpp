@@ -5,9 +5,33 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <string>
 #include <vector>
+
+struct AddressStats {
+    Amount totalReceived = 0;
+    Amount totalSent = 0;
+    Amount feesPaid = 0;
+    Amount minedRewards = 0;
+    Amount pendingOutgoing = 0;
+    std::size_t outgoingTransactionCount = 0;
+    std::size_t incomingTransactionCount = 0;
+    std::size_t minedBlockCount = 0;
+};
+
+struct NetworkStats {
+    std::size_t blockCount = 0;
+    std::size_t userTransactionCount = 0;
+    std::size_t coinbaseTransactionCount = 0;
+    std::size_t pendingTransactionCount = 0;
+    Amount totalTransferred = 0;
+    Amount totalFeesPaid = 0;
+    Amount totalMinedRewards = 0;
+    Amount medianUserTransactionAmount = 0;
+};
 
 class Blockchain {
 public:
@@ -42,6 +66,9 @@ public:
     [[nodiscard]] std::size_t getLastForkHeight() const;
     [[nodiscard]] std::size_t getReorgCount() const;
     [[nodiscard]] std::vector<Transaction> getPendingTransactionsForBlockTemplate() const;
+    [[nodiscard]] AddressStats getAddressStats(const std::string& address) const;
+    [[nodiscard]] NetworkStats getNetworkStats() const;
+    [[nodiscard]] std::vector<std::pair<std::string, Amount>> getTopBalances(std::size_t limit) const;
     [[nodiscard]] bool tryAdoptChain(const std::vector<Block>& candidateChain);
     [[nodiscard]] const std::vector<Block>& getChain() const;
     [[nodiscard]] const std::vector<Transaction>& getPendingTransactions() const;

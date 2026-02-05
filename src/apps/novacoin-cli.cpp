@@ -19,7 +19,9 @@ void printUsage() {
               << "  novacoin-cli mine <miner_address>\n"
               << "  novacoin-cli send <from> <to> <amount_nova> [fee_nova]\n"
               << "  novacoin-cli balance <address>\n"
-              << "  novacoin-cli summary\n";
+              << "  novacoin-cli summary\n"
+              << "  novacoin-cli address-stats <address>\n"
+              << "  novacoin-cli top <limit>\n";
 }
 
 double parseDouble(const std::string& raw, const std::string& field) {
@@ -90,6 +92,43 @@ int main(int argc, char* argv[]) {
 
         if (command == "summary") {
             std::cout << chain.getChainSummary();
+            return 0;
+        }
+
+        if (command == "address-stats") {
+            if (argc != 3) {
+                printUsage();
+                return 1;
+            }
+
+            const auto stats = chain.getAddressStats(argv[2]);
+            std::cout << "Address stats for " << argv[2] << "\n"
+                      << "  total_received=" << std::fixed << std::setprecision(8)
+                      << Transaction::toNOVA(stats.totalReceived) << " NOVA\n"
+                      << "  total_sent=" << Transaction::toNOVA(stats.totalSent) << " NOVA\n"
+                      << "  fees_paid=" << Transaction::toNOVA(stats.feesPaid) << " NOVA\n"
+                      << "  mined_rewards=" << Transaction::toNOVA(stats.minedRewards) << " NOVA\n"
+                      << "  pending_outgoing=" << Transaction::toNOVA(stats.pendingOutgoing) << " NOVA\n"
+                      << "  outgoing_tx=" << stats.outgoingTransactionCount << "\n"
+                      << "  incoming_tx=" << stats.incomingTransactionCount << "\n"
+                      << "  mined_blocks=" << stats.minedBlockCount << "\n";
+            return 0;
+        }
+
+        if (command == "top") {
+            if (argc != 3) {
+                printUsage();
+                return 1;
+            }
+
+            const std::size_t limit = static_cast<std::size_t>(std::stoull(argv[2]));
+            const auto topBalances = chain.getTopBalances(limit);
+            std::cout << "Top balances (limit=" << limit << ")\n";
+            for (std::size_t i = 0; i < topBalances.size(); ++i) {
+                std::cout << "  #" << (i + 1) << " " << topBalances[i].first << "="
+                          << std::fixed << std::setprecision(8) << Transaction::toNOVA(topBalances[i].second)
+                          << " NOVA\n";
+            }
             return 0;
         }
 

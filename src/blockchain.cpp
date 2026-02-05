@@ -632,6 +632,152 @@ std::vector<Transaction> Blockchain::getPendingTransactionsForBlockTemplate() co
     return selected;
 }
 
+AddressStats Blockchain::getAddressStats(const std::string& address) const {
+    if (address.empty()) {
+        throw std::invalid_argument("L'adresse analysee ne peut pas etre vide.");
+    }
+
+    AddressStats stats;
+
+    for (const auto& block : chain_) {
+        const auto& txs = block.getTransactions();
+        bool minerRewardedInBlock = false;
+
+        for (const auto& tx : txs) {
+            if (tx.from == "network") {
+                if (tx.to == address) {
+                    if (!safeAdd(stats.minedRewards, tx.amount, stats.minedRewards)) {
+                        throw std::overflow_error("Overflow minedRewards.");
+                    }
+                    minerRewardedInBlock = true;
+                }
+                continue;
+            }
+
+            if (tx.from == address) {
+                if (!safeAdd(stats.totalSent, tx.amount, stats.totalSent) ||
+                    !safeAdd(stats.feesPaid, tx.fee, stats.feesPaid)) {
+                    throw std::overflow_error("Overflow address sent/fees.");
+                }
+                ++stats.outgoingTransactionCount;
+            }
+
+            if (tx.to == address) {
+                if (!safeAdd(stats.totalReceived, tx.amount, stats.totalReceived)) {
+                    throw std::overflow_error("Overflow address received.");
+                }
+                ++stats.incomingTransactionCount;
+            }
+        }
+
+        if (minerRewardedInBlock) {
+            ++stats.minedBlockCount;
+        }
+    }
+
+    for (const auto& tx : pendingTransactions_) {
+        if (tx.from == address) {
+            Amount debit = 0;
+            if (!safeAdd(tx.amount, tx.fee, debit) || !safeAdd(stats.pendingOutgoing, debit, stats.pendingOutgoing)) {
+                throw std::overflow_error("Overflow pendingOutgoing.");
+            }
+        }
+    }
+
+    return stats;
+}
+
+NetworkStats Blockchain::getNetworkStats() const {
+    NetworkStats stats;
+    stats.blockCount = chain_.size();
+    stats.pendingTransactionCount = pendingTransactions_.size();
+
+    std::vector<Amount> userAmounts;
+
+    for (const auto& block : chain_) {
+        for (const auto& tx : block.getTransactions()) {
+            if (tx.from == "network") {
+                ++stats.coinbaseTransactionCount;
+                if (!safeAdd(stats.totalMinedRewards, tx.amount, stats.totalMinedRewards)) {
+                    throw std::overflow_error("Overflow network mined rewards.");
+                }
+                continue;
+            }
+
+            ++stats.userTransactionCount;
+            if (!safeAdd(stats.totalTransferred, tx.amount, stats.totalTransferred) ||
+                !safeAdd(stats.totalFeesPaid, tx.fee, stats.totalFeesPaid)) {
+                throw std::overflow_error("Overflow network transferred/fees.");
+            }
+            userAmounts.push_back(tx.amount);
+        }
+    }
+
+    if (!userAmounts.empty()) {
+        std::sort(userAmounts.begin(), userAmounts.end());
+        const std::size_t mid = userAmounts.size() / 2;
+        if (userAmounts.size() % 2 == 1) {
+            stats.medianUserTransactionAmount = userAmounts[mid];
+        } else {
+            stats.medianUserTransactionAmount = userAmounts[mid - 1] + (userAmounts[mid] - userAmounts[mid - 1]) / 2;
+        }
+    }
+
+    return stats;
+}
+
+std::vector<std::pair<std::string, Amount>> Blockchain::getTopBalances(std::size_t limit) const {
+    if (limit == 0) {
+        return {};
+    }
+
+    std::unordered_map<std::string, Amount> balances;
+    for (const auto& block : chain_) {
+        for (const auto& tx : block.getTransactions()) {
+            if (tx.from != "network") {
+                Amount debit = 0;
+                if (!safeAdd(tx.amount, tx.fee, debit)) {
+                    throw std::overflow_error("Overflow top balances debit.");
+                }
+                auto it = balances.find(tx.from);
+                if (it == balances.end()) {
+                    balances.emplace(tx.from, -debit);
+                } else if (!safeAdd(it->second, -debit, it->second)) {
+                    throw std::overflow_error("Overflow top balances sender update.");
+                }
+            }
+
+            auto itRecipient = balances.find(tx.to);
+            if (itRecipient == balances.end()) {
+                balances.emplace(tx.to, tx.amount);
+            } else if (!safeAdd(itRecipient->second, tx.amount, itRecipient->second)) {
+                throw std::overflow_error("Overflow top balances recipient update.");
+            }
+        }
+    }
+
+    std::vector<std::pair<std::string, Amount>> ranking;
+    ranking.reserve(balances.size());
+    for (const auto& entry : balances) {
+        if (entry.second > 0) {
+            ranking.push_back(entry);
+        }
+    }
+
+    std::sort(ranking.begin(), ranking.end(), [](const auto& lhs, const auto& rhs) {
+        if (lhs.second != rhs.second) {
+            return lhs.second > rhs.second;
+        }
+        return lhs.first < rhs.first;
+    });
+
+    if (ranking.size() > limit) {
+        ranking.resize(limit);
+    }
+
+    return ranking;
+}
+
 std::string Blockchain::getChainSummary() const {
     std::ostringstream out;
     out << std::fixed << std::setprecision(8);
@@ -647,6 +793,13 @@ std::string Blockchain::getChainSummary() const {
     out << "- last_reorg_depth=" << getLastReorgDepth() << "\n";
     out << "- last_fork_height=" << getLastForkHeight() << "\n";
     out << "- pending_transactions=" << pendingTransactions_.size() << "\n";
+
+    const NetworkStats networkStats = getNetworkStats();
+    out << "- network_user_transactions=" << networkStats.userTransactionCount << "\n";
+    out << "- network_coinbase_transactions=" << networkStats.coinbaseTransactionCount << "\n";
+    out << "- network_total_transferred=" << Transaction::toNOVA(networkStats.totalTransferred) << "\n";
+    out << "- network_total_fees=" << Transaction::toNOVA(networkStats.totalFeesPaid) << "\n";
+    out << "- network_median_tx=" << Transaction::toNOVA(networkStats.medianUserTransactionAmount) << "\n";
     return out.str();
 }
 

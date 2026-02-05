@@ -312,6 +312,59 @@ void testReorgMetricsTrackDepthAndForkHeight() {
     assertTrue(chain.getLastForkHeight() == 1, "La hauteur de fork doit pointer le dernier bloc commun.");
 }
 
+
+void testAddressStatsAndTopBalances() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 5};
+    chain.minePendingTransactions("miner");
+
+    const Transaction tx1{"miner", "alice", Transaction::fromNOVA(3.0), nowSeconds(), Transaction::fromNOVA(0.2)};
+    const Transaction tx2{"miner", "bob", Transaction::fromNOVA(2.0), nowSeconds(), Transaction::fromNOVA(0.1)};
+    chain.createTransaction(tx1);
+    chain.createTransaction(tx2);
+
+    const auto minerBefore = chain.getAddressStats("miner");
+    assertAmountEq(minerBefore.pendingOutgoing,
+                   Transaction::fromNOVA(5.3),
+                   "Le pending outgoing du mineur doit inclure montants + frais en mempool.");
+
+    chain.minePendingTransactions("miner");
+
+    const auto minerStats = chain.getAddressStats("miner");
+    assertTrue(minerStats.minedBlockCount >= 2, "Le mineur doit avoir au moins 2 blocs coinbase.");
+    assertAmountEq(minerStats.totalSent,
+                   Transaction::fromNOVA(5.0),
+                   "Le total envoye par le mineur doit correspondre aux transactions confirmees.");
+    assertAmountEq(minerStats.feesPaid,
+                   Transaction::fromNOVA(0.3),
+                   "Les frais payes du mineur doivent etre agreges.");
+
+    const auto top = chain.getTopBalances(2);
+    assertTrue(top.size() == 2, "Le top balances doit respecter la limite demandee.");
+    assertTrue(top[0].second >= top[1].second, "Le classement des soldes doit etre decroissant.");
+}
+
+void testNetworkStatsExposeChainActivity() {
+    Blockchain chain{1, Transaction::fromNOVA(10.0), 4};
+    chain.minePendingTransactions("miner");
+
+    chain.createTransaction(
+        Transaction{"miner", "alice", Transaction::fromNOVA(1.5), nowSeconds(), Transaction::fromNOVA(0.2)});
+    chain.createTransaction(
+        Transaction{"miner", "bob", Transaction::fromNOVA(2.5), nowSeconds(), Transaction::fromNOVA(0.3)});
+    chain.minePendingTransactions("miner");
+
+    const auto network = chain.getNetworkStats();
+    assertTrue(network.blockCount == chain.getBlockCount(), "Le blockCount expose doit suivre la chaine.");
+    assertTrue(network.userTransactionCount >= 2, "Le compteur de transactions utilisateur doit etre incremente.");
+    assertTrue(network.coinbaseTransactionCount >= 2, "Le compteur coinbase doit compter les blocs mines.");
+    assertAmountEq(network.totalTransferred,
+                   Transaction::fromNOVA(4.0),
+                   "Le total transfere doit sommer les montants de transactions utilisateur.");
+    assertAmountEq(network.totalFeesPaid,
+                   Transaction::fromNOVA(0.5),
+                   "Le total de frais reseau doit etre la somme des frais confirmes.");
+}
+
 void testAmountConversionRoundTrip() {
     const Amount sats = Transaction::fromNOVA(12.3456789);
     assertAmountEq(sats, 1'234'567'890, "La conversion NOVA -> satoshis doit etre exacte a 8 decimales.");
@@ -352,6 +405,8 @@ int main() {
         testReorgMempoolDropsNowUnfundedTransactions();
         testNoReorgMetricsChangeWhenAdoptionRejected();
         testReorgMetricsTrackDepthAndForkHeight();
+        testAddressStatsAndTopBalances();
+        testNetworkStatsExposeChainActivity();
         testAmountConversionRoundTrip();
         testDifficultyRetargetIncreasesWhenBlocksTooFast();
         std::cout << "Tous les tests Novacoin sont passes.\n";
