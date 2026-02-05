@@ -15,7 +15,8 @@ void printHistory(const Blockchain& chain, const std::string& address) {
     const auto history = chain.getTransactionHistory(address);
     std::cout << "Historique de " << address << " (" << history.size() << " transaction(s)):\n";
     for (const auto& tx : history) {
-        std::cout << "  " << tx.from << " -> " << tx.to << " : " << tx.amount << " @" << tx.timestamp << '\n';
+        std::cout << "  " << tx.from << " -> " << tx.to << " : " << tx.amount << " (frais=" << tx.fee
+                  << ") @" << tx.timestamp << '\n';
     }
 }
 } // namespace
@@ -24,14 +25,14 @@ int main() {
     try {
         Blockchain novacoin{4, 25.0};
 
-        novacoin.createTransaction(Transaction{"network", "alice", 20.0, nowSeconds()});
+        novacoin.createTransaction(Transaction{"network", "alice", 20.0, nowSeconds(), 0.0});
         novacoin.minePendingTransactions("miner1");
 
-        novacoin.createTransaction(Transaction{"alice", "bob", 10.0, nowSeconds()});
-        novacoin.createTransaction(Transaction{"bob", "charlie", 3.5, nowSeconds()});
+        novacoin.createTransaction(Transaction{"alice", "bob", 10.0, nowSeconds(), 0.15});
+        novacoin.createTransaction(Transaction{"bob", "charlie", 3.5, nowSeconds(), 0.05});
         novacoin.minePendingTransactions("miner1");
 
-        novacoin.createTransaction(Transaction{"miner1", "alice", 5.0, nowSeconds()});
+        novacoin.createTransaction(Transaction{"miner1", "alice", 5.0, nowSeconds(), 0.1});
 
         std::cout << "Chaîne valide: " << std::boolalpha << novacoin.isValid() << "\n";
         std::cout << "Solde de alice: " << novacoin.getBalance("alice") << "\n";
