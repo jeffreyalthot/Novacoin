@@ -128,6 +128,27 @@ unsigned int Blockchain::expectedDifficultyAtHeight(std::size_t height,
     return previousDifficulty;
 }
 
+std::uint64_t Blockchain::medianTimePastAtHeight(std::size_t height,
+                                                  const std::vector<Block>& referenceChain) const {
+    if (referenceChain.empty()) {
+        return 0;
+    }
+
+    const std::size_t clampedHeight = std::min(height, referenceChain.size() - 1);
+    const std::size_t windowSize = 11;
+    const std::size_t begin = clampedHeight + 1 >= windowSize ? clampedHeight + 1 - windowSize : 0;
+
+    std::vector<std::uint64_t> timestamps;
+    timestamps.reserve(clampedHeight - begin + 1);
+    for (std::size_t i = begin; i <= clampedHeight; ++i) {
+        timestamps.push_back(referenceChain[i].getTimestamp());
+    }
+
+    std::sort(timestamps.begin(), timestamps.end());
+    return timestamps[timestamps.size() / 2];
+}
+
+
 void Blockchain::createTransaction(const Transaction& tx) {
     pruneExpiredPendingTransactions();
     if (!isTransactionShapeValid(tx)) {
@@ -358,6 +379,20 @@ unsigned int Blockchain::getCurrentDifficulty() const {
 
 unsigned int Blockchain::estimateNextDifficulty() const { return expectedDifficultyAtHeight(chain_.size(), chain_); }
 
+std::uint64_t Blockchain::getMedianTimePast() const {
+    if (chain_.empty()) {
+        return 0;
+    }
+    return medianTimePastAtHeight(chain_.size() - 1, chain_);
+}
+
+std::uint64_t Blockchain::estimateNextMinimumTimestamp() const {
+    if (chain_.empty()) {
+        return 0;
+    }
+    return medianTimePastAtHeight(chain_.size() - 1, chain_);
+}
+
 std::size_t Blockchain::getBlockCount() const { return chain_.size(); }
 
 std::vector<Transaction> Blockchain::getTransactionHistory(const std::string& address) const {
@@ -423,6 +458,9 @@ bool Blockchain::isChainValid(const std::vector<Block>& candidateChain) const {
                 return false;
             }
             if (current.getTimestamp() + 1 < previous.getTimestamp()) {
+                return false;
+            }
+            if (current.getTimestamp() < medianTimePastAtHeight(i - 1, candidateChain)) {
                 return false;
             }
             if (current.getDifficulty() != expectedDifficultyAtHeight(i, candidateChain)) {

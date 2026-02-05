@@ -772,6 +772,39 @@ void testMempoolCapacityRejectsTooLowFeeWhenFull() {
     assertTrue(threw, "Une transaction moins fee que le minimum mempool doit etre rejetee quand la mempool est pleine.");
 }
 
+void testRejectChainWithTimestampBelowMedianTimePast() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 4};
+    chain.minePendingTransactions("miner");
+    chain.minePendingTransactions("miner");
+
+    std::vector<Block> candidate = chain.getChain();
+    const std::uint64_t medianTimePast = chain.getMedianTimePast();
+
+    candidate.emplace_back(static_cast<std::uint64_t>(candidate.size()),
+                           candidate.back().getHash(),
+                           std::vector<Transaction>{
+                               Transaction{"network", "alt-miner", Transaction::fromNOVA(25.0), nowSeconds(), 0}},
+                           1,
+                           medianTimePast > 0 ? medianTimePast - 1 : 0);
+    candidate.back().mine();
+
+    const bool adopted = chain.tryAdoptChain(candidate);
+    assertTrue(!adopted, "Une chaine dont le nouveau bloc est sous le median-time-past doit etre rejetee.");
+}
+
+void testMedianTimePastAndNextMinimumTimestampExposure() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 4};
+    chain.minePendingTransactions("miner");
+    chain.minePendingTransactions("miner");
+
+    const std::uint64_t mtp = chain.getMedianTimePast();
+    const std::uint64_t nextMinTimestamp = chain.estimateNextMinimumTimestamp();
+
+    assertTrue(mtp > 0, "Le median-time-past doit etre expose et strictement positif.");
+    assertTrue(nextMinTimestamp == mtp,
+               "La contrainte de timestamp minimum du prochain bloc doit correspondre au median-time-past actuel.");
+}
+
 void testEqualWorkChainUsesDeterministicTieBreak() {
     Blockchain chain{1, Transaction::fromNOVA(25.0), 4};
     chain.minePendingTransactions("miner");
@@ -853,6 +886,8 @@ int main() {
         testFindTransactionByIdForPendingAndUnknownTransaction();
         testMempoolCapacityEvictsLowestFeeTransaction();
         testMempoolCapacityRejectsTooLowFeeWhenFull();
+        testRejectChainWithTimestampBelowMedianTimePast();
+        testMedianTimePastAndNextMinimumTimestampExposure();
         testEqualWorkChainUsesDeterministicTieBreak();
         testIdenticalChainIsNotCountedAsReorg();
         testExpiredMempoolTransactionsArePruned();
