@@ -333,6 +333,7 @@ cmake --build build
 - Introduction d'un **socle de paramètres consensus figés** (`include/consensus.hpp`) pour centraliser le hard cap, le halving, les frais minimum et la dérive temporelle autorisée.
 - Migration complète des montants monétaires vers des **unités entières (satoshi NOVA)** avec conversions explicites et vérifications anti-overflow dans les calculs critiques (soldes, frais, récompenses, supply).
 - Introduction d'une **règle d'adoption de chaîne canonique par travail cumulé** (`tryAdoptChain`) avec validation complète d'une chaîne candidate et purge des transactions mempool déjà confirmées après réorganisation.
+- Implémentation d'une **expiration mempool (TTL)** (`kMempoolExpirySeconds`) avec purge automatique avant admission, minage et réorganisation pour éviter l'accumulation de transactions obsolètes.
 
 ## Travaux supplémentaires à effectuer (roadmap enrichie)
 

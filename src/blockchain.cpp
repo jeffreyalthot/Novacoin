@@ -87,6 +87,21 @@ bool Blockchain::isTimestampAcceptable(std::uint64_t timestamp) const {
     return timestamp <= nowSeconds() + kMaxFutureDriftSeconds;
 }
 
+bool Blockchain::isMempoolTransactionExpired(const Transaction& tx, std::uint64_t now) const {
+    if (tx.timestamp >= now) {
+        return false;
+    }
+    return now - tx.timestamp > kMempoolExpirySeconds;
+}
+
+void Blockchain::pruneExpiredPendingTransactions() {
+    const std::uint64_t now = nowSeconds();
+    pendingTransactions_.erase(
+        std::remove_if(pendingTransactions_.begin(), pendingTransactions_.end(),
+                       [this, now](const Transaction& tx) { return isMempoolTransactionExpired(tx, now); }),
+        pendingTransactions_.end());
+}
+
 unsigned int Blockchain::expectedDifficultyAtHeight(std::size_t height,
                                                    const std::vector<Block>& referenceChain) const {
     if (height == 0 || referenceChain.empty()) {
@@ -114,6 +129,7 @@ unsigned int Blockchain::expectedDifficultyAtHeight(std::size_t height,
 }
 
 void Blockchain::createTransaction(const Transaction& tx) {
+    pruneExpiredPendingTransactions();
     if (!isTransactionShapeValid(tx)) {
         throw std::invalid_argument("Transaction invalide (adresses, montant ou frais).");
     }
@@ -152,6 +168,7 @@ void Blockchain::createTransaction(const Transaction& tx) {
 }
 
 void Blockchain::minePendingTransactions(const std::string& minerAddress) {
+    pruneExpiredPendingTransactions();
     if (minerAddress.empty()) {
         throw std::invalid_argument("L'adresse du mineur ne peut pas être vide.");
     }
@@ -186,7 +203,8 @@ void Blockchain::minePendingTransactions(const std::string& minerAddress) {
         }
 
         const Transaction& candidate = pendingTransactions_[idx];
-        if (!isTimestampAcceptable(candidate.timestamp)) {
+        const std::uint64_t now = nowSeconds();
+        if (!isTimestampAcceptable(candidate.timestamp) || isMempoolTransactionExpired(candidate, now)) {
             continue;
         }
 
@@ -579,6 +597,7 @@ void Blockchain::rebuildPendingTransactionsAfterReorg(const std::vector<Block>& 
 }
 
 bool Blockchain::tryAdoptChain(const std::vector<Block>& candidateChain) {
+    pruneExpiredPendingTransactions();
     if (candidateChain.empty() || chain_.empty()) {
         return false;
     }
@@ -643,7 +662,8 @@ std::vector<Transaction> Blockchain::getPendingTransactionsForBlockTemplate() co
         }
 
         const Transaction& candidate = pendingTransactions_[idx];
-        if (!isTimestampAcceptable(candidate.timestamp)) {
+        const std::uint64_t now = nowSeconds();
+        if (!isTimestampAcceptable(candidate.timestamp) || isMempoolTransactionExpired(candidate, now)) {
             continue;
         }
 

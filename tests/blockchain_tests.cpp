@@ -436,6 +436,26 @@ void testHeadersForLocatorReturnsNextSegment() {
                "Sans locator, les premiers headers doivent etre retournes dans l'ordre.");
 }
 
+
+void testExpiredMempoolTransactionsArePruned() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 4};
+    chain.minePendingTransactions("miner");
+
+    const std::uint64_t expiredTs = nowSeconds() - Blockchain::kMempoolExpirySeconds - 10;
+    chain.createTransaction(
+        Transaction{"miner", "alice", Transaction::fromNOVA(1.0), expiredTs, Transaction::fromNOVA(0.1)});
+
+    assertTrue(chain.getPendingTransactions().size() == 1,
+               "La transaction expiree doit etre presente avant la purge.");
+
+    chain.minePendingTransactions("miner");
+
+    assertTrue(chain.getPendingTransactions().empty(),
+               "Les transactions expirees doivent etre purgees de la mempool avant minage.");
+    assertAmountEq(chain.getBalance("alice"), 0,
+                   "Une transaction expiree ne doit pas etre incluse dans un bloc.");
+}
+
 void testAmountConversionRoundTrip() {
     const Amount sats = Transaction::fromNOVA(12.3456789);
     assertAmountEq(sats, 1'234'567'890, "La conversion NOVA -> satoshis doit etre exacte a 8 decimales.");
@@ -570,6 +590,7 @@ int main() {
         testNetworkStatsExposeChainActivity();
         testHeadersFromHeightAndLocatorHelpers();
         testHeadersForLocatorReturnsNextSegment();
+        testExpiredMempoolTransactionsArePruned();
         testAmountConversionRoundTrip();
         testDifficultyRetargetIncreasesWhenBlocksTooFast();
         testRejectChainWithCoinbaseNotInLastPosition();
