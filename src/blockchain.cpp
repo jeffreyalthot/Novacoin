@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
+#include <limits>
 #include <stdexcept>
 #include <unordered_map>
 
@@ -35,6 +37,9 @@ Blockchain::Blockchain(unsigned int difficulty,
     if (maxTransactionsPerBlock_ == 0) {
         throw std::invalid_argument("La taille maximale d'un bloc doit être > 0.");
     }
+    if (miningReward_ < 0.0) {
+        throw std::invalid_argument("La récompense de minage doit être >= 0.");
+    }
 }
 
 Block Blockchain::createGenesisBlock() const {
@@ -44,12 +49,27 @@ Block Blockchain::createGenesisBlock() const {
     return genesis;
 }
 
+double Blockchain::blockSubsidyAtHeight(std::size_t height) const {
+    const std::size_t halvings = height / kHalvingInterval;
+    if (halvings >= std::numeric_limits<double>::digits) {
+        return 0.0;
+    }
+
+    const double divisor = std::pow(2.0, static_cast<double>(halvings));
+    const double reward = miningReward_ / divisor;
+    return reward < 1e-8 ? 0.0 : reward;
+}
+
 void Blockchain::createTransaction(const Transaction& tx) {
     if (!isTransactionShapeValid(tx)) {
         throw std::invalid_argument("Transaction invalide (adresses, montant ou frais).");
     }
 
-    if (tx.from != "network" && tx.amount + tx.fee > getAvailableBalance(tx.from)) {
+    if (tx.from == "network") {
+        throw std::invalid_argument("Les transactions network sont réservées au consensus (coinbase).");
+    }
+
+    if (tx.amount + tx.fee > getAvailableBalance(tx.from)) {
         throw std::invalid_argument("Fonds insuffisants pour créer cette transaction (montant + frais).");
     }
 
@@ -61,20 +81,29 @@ void Blockchain::minePendingTransactions(const std::string& minerAddress) {
         throw std::invalid_argument("L'adresse du mineur ne peut pas être vide.");
     }
 
-    if (pendingTransactions_.empty()) {
+    const std::size_t nextHeight = chain_.size();
+    const double baseReward = blockSubsidyAtHeight(nextHeight);
+    const double remainingSupply = std::max(0.0, kMaxSupply - getTotalSupply());
+
+    if (pendingTransactions_.empty() && baseReward <= 0.0) {
         return;
     }
 
-    const std::size_t txCount = std::min(maxTransactionsPerBlock_, pendingTransactions_.size());
-    std::vector<Transaction> transactionsToMine(
-        pendingTransactions_.begin(),
-        pendingTransactions_.begin() + txCount);
+    const std::size_t maxUserTransactions = maxTransactionsPerBlock_ > 0 ? maxTransactionsPerBlock_ - 1 : 0;
+    const std::size_t txCount = std::min(maxUserTransactions, pendingTransactions_.size());
+
+    std::vector<Transaction> transactionsToMine;
+    transactionsToMine.reserve(txCount + 1);
 
     double collectedFees = 0.0;
-    for (const auto& tx : transactionsToMine) {
-        collectedFees += tx.fee;
+    for (std::size_t i = 0; i < txCount; ++i) {
+        collectedFees += pendingTransactions_[i].fee;
+        transactionsToMine.push_back(pendingTransactions_[i]);
     }
-    const double minedReward = miningReward_ + collectedFees;
+
+    const double scheduledReward = baseReward + collectedFees;
+    const double mintedReward = std::min(scheduledReward, remainingSupply);
+    transactionsToMine.push_back(Transaction{"network", minerAddress, mintedReward, nowSeconds(), 0.0});
 
     Block blockToMine{chain_.size(), chain_.back().getHash(), std::move(transactionsToMine)};
     blockToMine.mine(difficulty_);
@@ -82,8 +111,7 @@ void Blockchain::minePendingTransactions(const std::string& minerAddress) {
 
     pendingTransactions_.erase(
         pendingTransactions_.begin(),
-        pendingTransactions_.begin() + txCount);
-    pendingTransactions_.push_back(Transaction{"network", minerAddress, minedReward, nowSeconds(), 0.0});
+        pendingTransactions_.begin() + static_cast<std::ptrdiff_t>(txCount));
 }
 
 double Blockchain::getBalance(const std::string& address) const {
@@ -119,13 +147,17 @@ double Blockchain::getAvailableBalance(const std::string& address) const {
 }
 
 double Blockchain::estimateNextMiningReward() const {
-    const std::size_t txCount = std::min(maxTransactionsPerBlock_, pendingTransactions_.size());
+    const std::size_t maxUserTransactions = maxTransactionsPerBlock_ > 0 ? maxTransactionsPerBlock_ - 1 : 0;
+    const std::size_t txCount = std::min(maxUserTransactions, pendingTransactions_.size());
 
     double totalFees = 0.0;
     for (std::size_t i = 0; i < txCount; ++i) {
         totalFees += pendingTransactions_[i].fee;
     }
-    return miningReward_ + totalFees;
+
+    const double baseReward = blockSubsidyAtHeight(chain_.size());
+    const double remainingSupply = std::max(0.0, kMaxSupply - getTotalSupply());
+    return std::min(baseReward + totalFees, remainingSupply);
 }
 
 double Blockchain::getTotalSupply() const {
@@ -178,6 +210,7 @@ bool Blockchain::isValid() const {
     }
 
     std::unordered_map<std::string, double> balances;
+    double cumulativeSupply = 0.0;
 
     for (std::size_t i = 0; i < chain_.size(); ++i) {
         const auto& current = chain_[i];
@@ -200,6 +233,10 @@ bool Blockchain::isValid() const {
             return false;
         }
 
+        double blockFees = 0.0;
+        double mintedInBlock = 0.0;
+        std::size_t coinbaseCount = 0;
+
         for (const auto& tx : current.getTransactions()) {
             if (!isTransactionShapeValid(tx)) {
                 return false;
@@ -210,8 +247,23 @@ bool Blockchain::isValid() const {
                     return false;
                 }
                 balances[tx.from] -= (tx.amount + tx.fee);
+                blockFees += tx.fee;
+            } else {
+                ++coinbaseCount;
+                mintedInBlock += tx.amount;
+                cumulativeSupply += tx.amount;
+                if (cumulativeSupply > kMaxSupply + 1e-9) {
+                    return false;
+                }
             }
             balances[tx.to] += tx.amount;
+        }
+
+        if (i > 0) {
+            const double expectedMaxReward = blockSubsidyAtHeight(i) + blockFees;
+            if (coinbaseCount != 1 || mintedInBlock > expectedMaxReward + 1e-9) {
+                return false;
+            }
         }
     }
 
