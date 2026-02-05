@@ -271,6 +271,47 @@ void testReorgMempoolDropsNowUnfundedTransactions() {
     assertTrue(chain.getPendingTransactions().empty(),
                "Apres reorg, les transactions mempool non financables doivent etre purgees.");
 }
+
+void testNoReorgMetricsChangeWhenAdoptionRejected() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 3};
+    chain.minePendingTransactions("miner");
+
+    std::vector<Block> weaker = chain.getChain();
+    weaker.pop_back();
+
+    const bool adopted = chain.tryAdoptChain(weaker);
+    assertTrue(!adopted, "Une chaine rejetee ne doit pas etre adoptee.");
+    assertTrue(chain.getReorgCount() == 0, "Le compteur de reorg ne doit pas augmenter en cas d'echec.");
+    assertTrue(chain.getLastReorgDepth() == 0, "La profondeur de reorg doit rester a 0 sans adoption.");
+}
+
+void testReorgMetricsTrackDepthAndForkHeight() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 3};
+    chain.minePendingTransactions("miner");
+    chain.minePendingTransactions("miner");
+
+    std::vector<Block> candidate = chain.getChain();
+    candidate.pop_back();
+    candidate.emplace_back(static_cast<std::uint64_t>(candidate.size()),
+                           candidate.back().getHash(),
+                           std::vector<Transaction>{
+                               Transaction{"network", "alt-miner", Transaction::fromNOVA(25.0), nowSeconds(), 0}},
+                           1);
+    candidate.back().mine();
+    candidate.emplace_back(static_cast<std::uint64_t>(candidate.size()),
+                           candidate.back().getHash(),
+                           std::vector<Transaction>{
+                               Transaction{"network", "alt-miner", Transaction::fromNOVA(25.0), nowSeconds(), 0}},
+                           1);
+    candidate.back().mine();
+
+    const bool adopted = chain.tryAdoptChain(candidate);
+    assertTrue(adopted, "Une chaine plus lourde doit etre adoptee.");
+    assertTrue(chain.getReorgCount() == 1, "Le compteur de reorg doit augmenter apres adoption.");
+    assertTrue(chain.getLastReorgDepth() == 1, "La profondeur doit correspondre au nombre de blocs detaches.");
+    assertTrue(chain.getLastForkHeight() == 1, "La hauteur de fork doit pointer le dernier bloc commun.");
+}
+
 void testAmountConversionRoundTrip() {
     const Amount sats = Transaction::fromNOVA(12.3456789);
     assertAmountEq(sats, 1'234'567'890, "La conversion NOVA -> satoshis doit etre exacte a 8 decimales.");
@@ -309,6 +350,8 @@ int main() {
         testReorgReinjectsDetachedTransactionsIntoMempool();
         testReorgMempoolRemovesTransactionsAlreadyOnNewChain();
         testReorgMempoolDropsNowUnfundedTransactions();
+        testNoReorgMetricsChangeWhenAdoptionRejected();
+        testReorgMetricsTrackDepthAndForkHeight();
         testAmountConversionRoundTrip();
         testDifficultyRetargetIncreasesWhenBlocksTooFast();
         std::cout << "Tous les tests Novacoin sont passes.\n";

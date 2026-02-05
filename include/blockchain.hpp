@@ -38,6 +38,9 @@ public:
     [[nodiscard]] bool isValid() const;
     [[nodiscard]] std::uint64_t getCumulativeWork() const;
     [[nodiscard]] std::string getChainSummary() const;
+    [[nodiscard]] std::size_t getLastReorgDepth() const;
+    [[nodiscard]] std::size_t getLastForkHeight() const;
+    [[nodiscard]] std::size_t getReorgCount() const;
     [[nodiscard]] std::vector<Transaction> getPendingTransactionsForBlockTemplate() const;
     [[nodiscard]] bool tryAdoptChain(const std::vector<Block>& candidateChain);
     [[nodiscard]] const std::vector<Block>& getChain() const;
@@ -55,12 +58,17 @@ private:
                                                                        const std::vector<Block>& newChain) const;
     void rebuildPendingTransactionsAfterReorg(const std::vector<Block>& oldChain,
                                               const std::vector<Block>& newChain);
+    [[nodiscard]] std::size_t commonPrefixLength(const std::vector<Block>& lhs,
+                                                 const std::vector<Block>& rhs) const;
 
     unsigned int initialDifficulty_;
     Amount miningReward_;
     std::size_t maxTransactionsPerBlock_;
     std::vector<Block> chain_;
     std::vector<Transaction> pendingTransactions_;
+    std::size_t lastReorgDepth_ = 0;
+    std::size_t lastForkHeight_ = 0;
+    std::size_t reorgCount_ = 0;
 
     Block createGenesisBlock() const;
 };

@@ -54,7 +54,10 @@ Blockchain::Blockchain(unsigned int difficulty, Amount miningReward, std::size_t
       miningReward_(miningReward),
       maxTransactionsPerBlock_(maxTransactionsPerBlock),
       chain_({createGenesisBlock()}),
-      pendingTransactions_() {
+      pendingTransactions_(),
+      lastReorgDepth_(0),
+      lastForkHeight_(0),
+      reorgCount_(0) {
     if (maxTransactionsPerBlock_ == 0) {
         throw std::invalid_argument("La taille maximale d'un bloc doit être > 0.");
     }
@@ -559,10 +562,26 @@ bool Blockchain::tryAdoptChain(const std::vector<Block>& candidateChain) {
     }
 
     const std::vector<Block> previousChain = chain_;
+    const std::size_t sharedPrefix = commonPrefixLength(previousChain, candidateChain);
     chain_ = candidateChain;
     rebuildPendingTransactionsAfterReorg(previousChain, chain_);
 
+    const std::size_t detachedBlocks = previousChain.size() > sharedPrefix ? previousChain.size() - sharedPrefix : 0;
+    lastReorgDepth_ = detachedBlocks;
+    lastForkHeight_ = sharedPrefix > 0 ? sharedPrefix - 1 : 0;
+    ++reorgCount_;
+
     return true;
+}
+
+
+std::size_t Blockchain::commonPrefixLength(const std::vector<Block>& lhs, const std::vector<Block>& rhs) const {
+    const std::size_t limit = std::min(lhs.size(), rhs.size());
+    std::size_t prefix = 0;
+    while (prefix < limit && lhs[prefix].getHash() == rhs[prefix].getHash()) {
+        ++prefix;
+    }
+    return prefix;
 }
 
 std::vector<Transaction> Blockchain::getPendingTransactionsForBlockTemplate() const {
@@ -624,9 +643,18 @@ std::string Blockchain::getChainSummary() const {
     out << "- current_difficulty=" << getCurrentDifficulty() << "\n";
     out << "- next_difficulty_estimate=" << estimateNextDifficulty() << "\n";
     out << "- cumulative_work=" << getCumulativeWork() << "\n";
+    out << "- reorg_count=" << getReorgCount() << "\n";
+    out << "- last_reorg_depth=" << getLastReorgDepth() << "\n";
+    out << "- last_fork_height=" << getLastForkHeight() << "\n";
     out << "- pending_transactions=" << pendingTransactions_.size() << "\n";
     return out.str();
 }
 
 const std::vector<Block>& Blockchain::getChain() const { return chain_; }
 const std::vector<Transaction>& Blockchain::getPendingTransactions() const { return pendingTransactions_; }
+
+std::size_t Blockchain::getLastReorgDepth() const { return lastReorgDepth_; }
+
+std::size_t Blockchain::getLastForkHeight() const { return lastForkHeight_; }
+
+std::size_t Blockchain::getReorgCount() const { return reorgCount_; }
