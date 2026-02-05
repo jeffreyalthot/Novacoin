@@ -1,5 +1,6 @@
 #include "blockchain.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <stdexcept>
 #include <unordered_map>
@@ -23,11 +24,18 @@ bool isTransactionShapeValid(const Transaction& tx) {
 }
 } // namespace
 
-Blockchain::Blockchain(unsigned int difficulty, double miningReward)
+Blockchain::Blockchain(unsigned int difficulty,
+                       double miningReward,
+                       std::size_t maxTransactionsPerBlock)
     : difficulty_(difficulty),
       miningReward_(miningReward),
+      maxTransactionsPerBlock_(maxTransactionsPerBlock),
       chain_({createGenesisBlock()}),
-      pendingTransactions_() {}
+      pendingTransactions_() {
+    if (maxTransactionsPerBlock_ == 0) {
+        throw std::invalid_argument("La taille maximale d'un bloc doit être > 0.");
+    }
+}
 
 Block Blockchain::createGenesisBlock() const {
     Transaction bootstrap{"network", "genesis", 0.0, nowSeconds(), 0.0};
@@ -57,14 +65,25 @@ void Blockchain::minePendingTransactions(const std::string& minerAddress) {
         return;
     }
 
-    const double nextReward = estimateNextMiningReward();
+    const std::size_t txCount = std::min(maxTransactionsPerBlock_, pendingTransactions_.size());
+    std::vector<Transaction> transactionsToMine(
+        pendingTransactions_.begin(),
+        pendingTransactions_.begin() + txCount);
 
-    Block blockToMine{chain_.size(), chain_.back().getHash(), pendingTransactions_};
+    double collectedFees = 0.0;
+    for (const auto& tx : transactionsToMine) {
+        collectedFees += tx.fee;
+    }
+    const double minedReward = miningReward_ + collectedFees;
+
+    Block blockToMine{chain_.size(), chain_.back().getHash(), std::move(transactionsToMine)};
     blockToMine.mine(difficulty_);
     chain_.push_back(blockToMine);
 
-    pendingTransactions_.clear();
-    pendingTransactions_.push_back(Transaction{"network", minerAddress, nextReward, nowSeconds(), 0.0});
+    pendingTransactions_.erase(
+        pendingTransactions_.begin(),
+        pendingTransactions_.begin() + txCount);
+    pendingTransactions_.push_back(Transaction{"network", minerAddress, minedReward, nowSeconds(), 0.0});
 }
 
 double Blockchain::getBalance(const std::string& address) const {
@@ -100,9 +119,11 @@ double Blockchain::getAvailableBalance(const std::string& address) const {
 }
 
 double Blockchain::estimateNextMiningReward() const {
+    const std::size_t txCount = std::min(maxTransactionsPerBlock_, pendingTransactions_.size());
+
     double totalFees = 0.0;
-    for (const auto& tx : pendingTransactions_) {
-        totalFees += tx.fee;
+    for (std::size_t i = 0; i < txCount; ++i) {
+        totalFees += pendingTransactions_[i].fee;
     }
     return miningReward_ + totalFees;
 }
@@ -152,7 +173,7 @@ std::vector<Transaction> Blockchain::getTransactionHistory(const std::string& ad
 }
 
 bool Blockchain::isValid() const {
-    if (chain_.empty()) {
+    if (chain_.empty() || maxTransactionsPerBlock_ == 0) {
         return false;
     }
 
@@ -173,6 +194,10 @@ bool Blockchain::isValid() const {
             if (!current.hasValidHash(difficulty_)) {
                 return false;
             }
+        }
+
+        if (i > 0 && current.getTransactions().size() > maxTransactionsPerBlock_) {
+            return false;
         }
 
         for (const auto& tx : current.getTransactions()) {

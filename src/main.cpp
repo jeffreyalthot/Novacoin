@@ -23,7 +23,7 @@ void printHistory(const Blockchain& chain, const std::string& address) {
 
 int main() {
     try {
-        Blockchain novacoin{4, 25.0};
+        Blockchain novacoin{4, 25.0, 2};
 
         novacoin.createTransaction(Transaction{"network", "alice", 20.0, nowSeconds(), 0.0});
         novacoin.minePendingTransactions("miner1");
@@ -42,6 +42,10 @@ int main() {
         std::cout << "Solde de alice: " << novacoin.getBalance("alice") << "\n";
         std::cout << "Solde disponible de miner1: " << novacoin.getAvailableBalance("miner1") << "\n";
         std::cout << "Transactions en attente: " << novacoin.getPendingTransactions().size() << "\n";
+
+        novacoin.minePendingTransactions("miner2");
+        std::cout << "Après minage fractionné (capacité=2), blocs: " << novacoin.getBlockCount()
+                  << ", en attente: " << novacoin.getPendingTransactions().size() << "\n";
 
         printHistory(novacoin, "alice");
 
