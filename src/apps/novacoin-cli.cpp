@@ -24,6 +24,7 @@ void printUsage() {
               << "  novacoin-cli summary\n"
               << "  novacoin-cli address-stats <address>\n"
               << "  novacoin-cli mempool-stats\n"
+              << "  novacoin-cli fee-estimate <target_blocks>\n"
               << "  novacoin-cli top <limit>\n"
               << "  novacoin-cli headers <start_height> <max_count>\n"
               << "  novacoin-cli locator\n"
@@ -153,6 +154,20 @@ int main(int argc, char* argv[]) {
                       << "  min_fee=" << Transaction::toNOVA(stats.minFee) << " NOVA\n"
                       << "  max_fee=" << Transaction::toNOVA(stats.maxFee) << " NOVA\n"
                       << "  median_fee=" << Transaction::toNOVA(stats.medianFee) << " NOVA\n";
+            return 0;
+        }
+
+
+        if (command == "fee-estimate") {
+            if (argc != 3) {
+                printUsage();
+                return 1;
+            }
+
+            const std::size_t targetBlocks = parseSize(argv[2], "target_blocks");
+            const Amount estimatedFee = chain.estimateRequiredFeeForInclusion(targetBlocks);
+            std::cout << "fee_estimate target_blocks=" << targetBlocks << " required_fee=" << std::fixed
+                      << std::setprecision(8) << Transaction::toNOVA(estimatedFee) << " NOVA\n";
             return 0;
         }
 

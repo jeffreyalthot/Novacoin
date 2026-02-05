@@ -848,6 +848,45 @@ NetworkStats Blockchain::getNetworkStats() const {
     return stats;
 }
 
+
+Amount Blockchain::estimateRequiredFeeForInclusion(std::size_t targetBlocks) const {
+    if (targetBlocks == 0) {
+        throw std::invalid_argument("targetBlocks doit etre >= 1.");
+    }
+
+    const std::size_t maxUserTransactions = maxTransactionsPerBlock_ > 0 ? maxTransactionsPerBlock_ - 1 : 0;
+    if (maxUserTransactions == 0 || pendingTransactions_.empty()) {
+        return kMinRelayFee;
+    }
+
+    const std::size_t projectedSlots = maxUserTransactions * targetBlocks;
+    if (projectedSlots == 0 || projectedSlots > pendingTransactions_.size()) {
+        return kMinRelayFee;
+    }
+
+    std::vector<Amount> fees;
+    fees.reserve(pendingTransactions_.size());
+    const std::uint64_t now = nowSeconds();
+    for (const auto& tx : pendingTransactions_) {
+        if (!isTimestampAcceptable(tx.timestamp) || isMempoolTransactionExpired(tx, now)) {
+            continue;
+        }
+        fees.push_back(tx.fee);
+    }
+
+    if (fees.empty()) {
+        return kMinRelayFee;
+    }
+
+    std::sort(fees.begin(), fees.end(), std::greater<Amount>());
+    if (projectedSlots > fees.size()) {
+        return kMinRelayFee;
+    }
+
+    const Amount cutoffFee = fees[projectedSlots - 1];
+    return std::max(kMinRelayFee, cutoffFee);
+}
+
 MempoolStats Blockchain::getMempoolStats() const {
     MempoolStats stats;
     stats.transactionCount = pendingTransactions_.size();

@@ -109,6 +109,7 @@ public:
     [[nodiscard]] AddressStats getAddressStats(const std::string& address) const;
     [[nodiscard]] NetworkStats getNetworkStats() const;
     [[nodiscard]] MempoolStats getMempoolStats() const;
+    [[nodiscard]] Amount estimateRequiredFeeForInclusion(std::size_t targetBlocks) const;
     [[nodiscard]] std::vector<std::pair<std::string, Amount>> getTopBalances(std::size_t limit) const;
     [[nodiscard]] std::vector<BlockHeaderInfo> getHeadersFromHeight(std::size_t startHeight,
                                                                     std::size_t maxCount) const;
