@@ -579,6 +579,15 @@ void Blockchain::rebuildPendingTransactionsAfterReorg(const std::vector<Block>& 
 }
 
 bool Blockchain::tryAdoptChain(const std::vector<Block>& candidateChain) {
+    if (candidateChain.empty() || chain_.empty()) {
+        return false;
+    }
+
+    // Un noeud ne doit pas adopter une chaine d'un autre reseau/genesis.
+    if (candidateChain.front().getHash() != chain_.front().getHash()) {
+        return false;
+    }
+
     if (!isChainValid(candidateChain)) {
         return false;
     }
