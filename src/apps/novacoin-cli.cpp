@@ -25,6 +25,7 @@ void printUsage() {
               << "  novacoin-cli address-stats <address>\n"
               << "  novacoin-cli network-stats\n"
               << "  novacoin-cli mempool-stats\n"
+              << "  novacoin-cli mempool [limit]\n"
               << "  novacoin-cli fee-estimate <target_blocks>\n"
               << "  novacoin-cli top <limit>\n"
               << "  novacoin-cli headers <start_height> <max_count>\n"
@@ -177,6 +178,28 @@ int main(int argc, char* argv[]) {
                       << "  min_fee=" << Transaction::toNOVA(stats.minFee) << " NOVA\n"
                       << "  max_fee=" << Transaction::toNOVA(stats.maxFee) << " NOVA\n"
                       << "  median_fee=" << Transaction::toNOVA(stats.medianFee) << " NOVA\n";
+            return 0;
+        }
+
+        if (command == "mempool") {
+            if (argc > 3) {
+                printUsage();
+                return 1;
+            }
+
+            const auto blockTemplate = chain.getPendingTransactionsForBlockTemplate();
+            const std::size_t limit = argc == 3 ? parseSize(argv[2], "limit") : blockTemplate.size();
+            const std::size_t count = std::min(limit, blockTemplate.size());
+
+            std::cout << "mempool_txs=" << blockTemplate.size() << " shown=" << count << "\n";
+            for (std::size_t i = 0; i < count; ++i) {
+                const auto& tx = blockTemplate[i];
+                std::cout << "  #" << (i + 1) << " id=" << tx.id() << " from=" << tx.from
+                          << " to=" << tx.to << " amount=" << std::fixed << std::setprecision(8)
+                          << Transaction::toNOVA(tx.amount) << " NOVA"
+                          << " fee=" << Transaction::toNOVA(tx.fee) << " NOVA"
+                          << " ts=" << tx.timestamp << "\n";
+            }
             return 0;
         }
 
