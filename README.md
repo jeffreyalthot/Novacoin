@@ -302,6 +302,8 @@ cmake --build build
 - Ajout d'une **politique de mempool minimale** avec frais plancher (`kMinRelayFee`) pour filtrer les transactions non économiques.
 - Ajout d'un **filtre anti-horloge** : rejet des transactions trop dans le futur, et contrôles d'horodatage côté validation de chaîne.
 - Priorisation du template de bloc par frais (ordre décroissant) avec pré-validation de solvabilité projetée, pour améliorer l'efficacité du minage local.
+- Introduction d'un **socle de paramètres consensus figés** (`include/consensus.hpp`) pour centraliser le hard cap, le halving, les frais minimum et la dérive temporelle autorisée.
+- Migration complète des montants monétaires vers des **unités entières (satoshi NOVA)** avec conversions explicites et vérifications anti-overflow dans les calculs critiques (soldes, frais, récompenses, supply).
 
 ## Travaux supplémentaires à effectuer (roadmap enrichie)
 
