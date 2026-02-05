@@ -83,18 +83,19 @@ bool Blockchain::isTimestampAcceptable(std::uint64_t timestamp) const {
     return timestamp <= nowSeconds() + kMaxFutureDriftSeconds;
 }
 
-unsigned int Blockchain::expectedDifficultyAtHeight(std::size_t height) const {
-    if (height == 0 || chain_.empty()) {
+unsigned int Blockchain::expectedDifficultyAtHeight(std::size_t height,
+                                                   const std::vector<Block>& referenceChain) const {
+    if (height == 0 || referenceChain.empty()) {
         return initialDifficulty_;
     }
 
-    const unsigned int previousDifficulty = chain_[height - 1].getDifficulty();
+    const unsigned int previousDifficulty = referenceChain[height - 1].getDifficulty();
     if (height % kDifficultyAdjustmentInterval != 0 || height < kDifficultyAdjustmentInterval) {
         return previousDifficulty;
     }
 
-    const std::uint64_t firstTimestamp = chain_[height - kDifficultyAdjustmentInterval].getTimestamp();
-    const std::uint64_t lastTimestamp = chain_[height - 1].getTimestamp();
+    const std::uint64_t firstTimestamp = referenceChain[height - kDifficultyAdjustmentInterval].getTimestamp();
+    const std::uint64_t lastTimestamp = referenceChain[height - 1].getTimestamp();
     const std::uint64_t actualTimespan = std::max<std::uint64_t>(1, lastTimestamp - firstTimestamp);
     const std::uint64_t targetTimespan = kDifficultyAdjustmentInterval * kTargetBlockTimeSeconds;
 
@@ -214,7 +215,7 @@ void Blockchain::minePendingTransactions(const std::string& minerAddress) {
     Block blockToMine{chain_.size(),
                       chain_.back().getHash(),
                       transactionsToMine,
-                      expectedDifficultyAtHeight(chain_.size())};
+                      expectedDifficultyAtHeight(chain_.size(), chain_)};
     blockToMine.mine();
     chain_.push_back(blockToMine);
 
@@ -309,7 +310,7 @@ unsigned int Blockchain::getCurrentDifficulty() const {
     return chain_.empty() ? initialDifficulty_ : chain_.back().getDifficulty();
 }
 
-unsigned int Blockchain::estimateNextDifficulty() const { return expectedDifficultyAtHeight(chain_.size()); }
+unsigned int Blockchain::estimateNextDifficulty() const { return expectedDifficultyAtHeight(chain_.size(), chain_); }
 
 std::size_t Blockchain::getBlockCount() const { return chain_.size(); }
 
@@ -333,16 +334,33 @@ std::vector<Transaction> Blockchain::getTransactionHistory(const std::string& ad
     return history;
 }
 
-bool Blockchain::isValid() const {
-    if (chain_.empty() || maxTransactionsPerBlock_ == 0) {
+bool Blockchain::isValid() const { return isChainValid(chain_); }
+
+
+std::uint64_t Blockchain::computeCumulativeWork(const std::vector<Block>& chain) const {
+    std::uint64_t total = 0;
+    for (const auto& block : chain) {
+        const std::uint64_t blockWork = 1ULL << std::min(63U, block.getDifficulty());
+        if (std::numeric_limits<std::uint64_t>::max() - total < blockWork) {
+            return std::numeric_limits<std::uint64_t>::max();
+        }
+        total += blockWork;
+    }
+    return total;
+}
+
+std::uint64_t Blockchain::getCumulativeWork() const { return computeCumulativeWork(chain_); }
+
+bool Blockchain::isChainValid(const std::vector<Block>& candidateChain) const {
+    if (candidateChain.empty() || maxTransactionsPerBlock_ == 0) {
         return false;
     }
 
     std::unordered_map<std::string, Amount> balances;
     Amount cumulativeSupply = 0;
 
-    for (std::size_t i = 0; i < chain_.size(); ++i) {
-        const auto& current = chain_[i];
+    for (std::size_t i = 0; i < candidateChain.size(); ++i) {
+        const auto& current = candidateChain[i];
 
         if (!isTimestampAcceptable(current.getTimestamp())) {
             return false;
@@ -353,14 +371,14 @@ bool Blockchain::isValid() const {
                 return false;
             }
         } else {
-            const auto& previous = chain_[i - 1];
+            const auto& previous = candidateChain[i - 1];
             if (current.getPreviousHash() != previous.getHash() || !current.hasValidHash()) {
                 return false;
             }
             if (current.getTimestamp() + 1 < previous.getTimestamp()) {
                 return false;
             }
-            if (current.getDifficulty() != expectedDifficultyAtHeight(i)) {
+            if (current.getDifficulty() != expectedDifficultyAtHeight(i, candidateChain)) {
                 return false;
             }
         }
@@ -424,6 +442,33 @@ bool Blockchain::isValid() const {
     return true;
 }
 
+bool Blockchain::tryAdoptChain(const std::vector<Block>& candidateChain) {
+    if (!isChainValid(candidateChain)) {
+        return false;
+    }
+
+    const std::uint64_t currentWork = computeCumulativeWork(chain_);
+    const std::uint64_t candidateWork = computeCumulativeWork(candidateChain);
+    if (candidateWork <= currentWork) {
+        return false;
+    }
+
+    chain_ = candidateChain;
+    pendingTransactions_.erase(
+        std::remove_if(pendingTransactions_.begin(), pendingTransactions_.end(), [this](const Transaction& tx) {
+            return std::any_of(chain_.begin(), chain_.end(), [&tx](const Block& block) {
+                return std::any_of(block.getTransactions().begin(),
+                                   block.getTransactions().end(),
+                                   [&tx](const Transaction& onChainTx) {
+                                       return onChainTx.from != "network" && onChainTx.id() == tx.id();
+                                   });
+            });
+        }),
+        pendingTransactions_.end());
+
+    return true;
+}
+
 std::vector<Transaction> Blockchain::getPendingTransactionsForBlockTemplate() const {
     const std::size_t maxUserTransactions = maxTransactionsPerBlock_ > 0 ? maxTransactionsPerBlock_ - 1 : 0;
 
@@ -482,6 +527,7 @@ std::string Blockchain::getChainSummary() const {
     out << "- next_reward_estimate=" << Transaction::toNOVA(estimateNextMiningReward()) << "\n";
     out << "- current_difficulty=" << getCurrentDifficulty() << "\n";
     out << "- next_difficulty_estimate=" << estimateNextDifficulty() << "\n";
+    out << "- cumulative_work=" << getCumulativeWork() << "\n";
     out << "- pending_transactions=" << pendingTransactions_.size() << "\n";
     return out.str();
 }

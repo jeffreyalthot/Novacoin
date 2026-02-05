@@ -137,6 +137,38 @@ void testTemplatePrioritizesHigherFees() {
     assertTrue(templateTxs[1].to == "charlie", "La deuxieme transaction doit etre la suivante en fee.");
 }
 
+
+void testAdoptChainWithMoreCumulativeWork() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 3};
+    chain.minePendingTransactions("miner");
+
+    const auto before = chain.getChain();
+    std::vector<Block> candidate = before;
+    candidate.emplace_back(static_cast<std::uint64_t>(candidate.size()),
+                           candidate.back().getHash(),
+                           std::vector<Transaction>{
+                               Transaction{"network", "alt-miner", Transaction::fromNOVA(25.0), nowSeconds(), 0}},
+                           1);
+    candidate.back().mine();
+
+    const bool adopted = chain.tryAdoptChain(candidate);
+    assertTrue(adopted, "Une chaine valide avec plus de travail cumule doit etre adoptee.");
+    assertTrue(chain.getBlockCount() == candidate.size(), "La chaine locale doit etre remplacee apres adoption.");
+    assertTrue(chain.isValid(), "La chaine adoptee doit rester valide.");
+}
+
+void testRejectChainWithoutMoreWork() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 3};
+    chain.minePendingTransactions("miner");
+    chain.minePendingTransactions("miner");
+
+    std::vector<Block> candidate = chain.getChain();
+    candidate.pop_back();
+
+    const bool adopted = chain.tryAdoptChain(candidate);
+    assertTrue(!adopted, "Une chaine avec moins de travail cumule ne doit pas etre adoptee.");
+}
+
 void testAmountConversionRoundTrip() {
     const Amount sats = Transaction::fromNOVA(12.3456789);
     assertAmountEq(sats, 1'234'567'890, "La conversion NOVA -> satoshis doit etre exacte a 8 decimales.");
@@ -170,6 +202,8 @@ int main() {
         testRejectTooLowFeeTransaction();
         testRejectFutureTimestampTransaction();
         testTemplatePrioritizesHigherFees();
+        testAdoptChainWithMoreCumulativeWork();
+        testRejectChainWithoutMoreWork();
         testAmountConversionRoundTrip();
         testDifficultyRetargetIncreasesWhenBlocksTooFast();
         std::cout << "Tous les tests Novacoin sont passes.\n";

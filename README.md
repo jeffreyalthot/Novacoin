@@ -15,14 +15,14 @@ Ce README sert de **plan directeur complet** pour poser les bases techniques, é
 - 🟡 **Phase 3 (consensus PoW production-ready)** :
   - ✅ validation de timestamp futur borné,
   - ✅ ajustement dynamique de difficulté par fenêtre,
-  - ⏳ réorganisations de chaîne/fork-choice à implémenter.
+  - ✅ réorganisations de chaîne locales avec règle de sélection par travail cumulé (most cumulative work).
 - ⏳ **Phases 4 à 9** : en attente (réseau P2P, persistance, wallet, API/CLI, observabilité, audit, testnet/mainnet).
 
 ### Prochain incrément recommandé
 
-1. Implémenter une structure de *block index* avec cumul de travail.
-2. Introduire une règle de sélection de chaîne canonique (most cumulative work).
-3. Ajouter des tests d'intégration orientés forks/réorg.
+1. Étendre le modèle de travail cumulé vers un block index persistant (multi-branches).
+2. Couvrir des scénarios de réorg profonde (N blocs) avec remise en mempool avancée.
+3. Préparer la synchronisation réseau headers-first pour appliquer ce fork-choice en multi-nœuds.
 
 ---
 
@@ -320,6 +320,7 @@ cmake --build build
 - Priorisation du template de bloc par frais (ordre décroissant) avec pré-validation de solvabilité projetée, pour améliorer l'efficacité du minage local.
 - Introduction d'un **socle de paramètres consensus figés** (`include/consensus.hpp`) pour centraliser le hard cap, le halving, les frais minimum et la dérive temporelle autorisée.
 - Migration complète des montants monétaires vers des **unités entières (satoshi NOVA)** avec conversions explicites et vérifications anti-overflow dans les calculs critiques (soldes, frais, récompenses, supply).
+- Introduction d'une **règle d'adoption de chaîne canonique par travail cumulé** (`tryAdoptChain`) avec validation complète d'une chaîne candidate et purge des transactions mempool déjà confirmées après réorganisation.
 
 ## Travaux supplémentaires à effectuer (roadmap enrichie)
 
