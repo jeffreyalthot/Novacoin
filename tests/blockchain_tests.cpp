@@ -772,6 +772,55 @@ void testMempoolCapacityRejectsTooLowFeeWhenFull() {
     assertTrue(threw, "Une transaction moins fee que le minimum mempool doit etre rejetee quand la mempool est pleine.");
 }
 
+
+void testFeeEstimateReturnsRelayFeeWhenMempoolEmptyOrTargetLarge() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 3};
+    chain.minePendingTransactions("miner");
+
+    assertAmountEq(chain.estimateRequiredFeeForInclusion(1), Blockchain::kMinRelayFee,
+                   "Sans transactions en mempool, le fee estime doit retomber au minimum relay.");
+
+    chain.createTransaction(
+        Transaction{"miner", "alice", Transaction::fromNOVA(1.0), nowSeconds(), Transaction::fromNOVA(0.5)});
+    assertAmountEq(chain.estimateRequiredFeeForInclusion(10), Blockchain::kMinRelayFee,
+                   "Si la capacite cible depasse la mempool, le fee estime doit etre le minimum relay.");
+}
+
+void testFeeEstimateMatchesMempoolCutoff() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 3};
+    chain.minePendingTransactions("miner");
+
+    chain.createTransaction(
+        Transaction{"miner", "alice", Transaction::fromNOVA(1.0), nowSeconds(), Transaction::fromNOVA(0.1)});
+    chain.createTransaction(
+        Transaction{"miner", "bob", Transaction::fromNOVA(1.0), nowSeconds(), Transaction::fromNOVA(0.8)});
+    chain.createTransaction(
+        Transaction{"miner", "charlie", Transaction::fromNOVA(1.0), nowSeconds(), Transaction::fromNOVA(0.3)});
+    chain.createTransaction(
+        Transaction{"miner", "dave", Transaction::fromNOVA(1.0), nowSeconds(), Transaction::fromNOVA(0.5)});
+
+    // maxTransactionsPerBlock=3 => 2 tx utilisateur par bloc.
+    assertAmountEq(chain.estimateRequiredFeeForInclusion(1), Transaction::fromNOVA(0.5),
+                   "Pour 1 bloc, le cutoff doit correspondre au 2e fee le plus eleve.");
+    assertAmountEq(chain.estimateRequiredFeeForInclusion(2), Transaction::fromNOVA(0.1),
+                   "Pour 2 blocs, le cutoff doit correspondre au 4e fee le plus eleve.");
+}
+
+void testFeeEstimateRejectsZeroTarget() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 3};
+    chain.minePendingTransactions("miner");
+
+    bool threw = false;
+    try {
+        static_cast<void>(chain.estimateRequiredFeeForInclusion(0));
+    } catch (const std::invalid_argument&) {
+        threw = true;
+    }
+
+    assertTrue(threw, "Une estimation de frais avec targetBlocks=0 doit etre rejetee.");
+}
+
+
 void testRejectChainWithTimestampBelowMedianTimePast() {
     Blockchain chain{1, Transaction::fromNOVA(25.0), 4};
     chain.minePendingTransactions("miner");
@@ -886,6 +935,9 @@ int main() {
         testFindTransactionByIdForPendingAndUnknownTransaction();
         testMempoolCapacityEvictsLowestFeeTransaction();
         testMempoolCapacityRejectsTooLowFeeWhenFull();
+        testFeeEstimateReturnsRelayFeeWhenMempoolEmptyOrTargetLarge();
+        testFeeEstimateMatchesMempoolCutoff();
+        testFeeEstimateRejectsZeroTarget();
         testRejectChainWithTimestampBelowMedianTimePast();
         testMedianTimePastAndNextMinimumTimestampExposure();
         testEqualWorkChainUsesDeterministicTieBreak();
