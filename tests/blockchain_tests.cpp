@@ -475,6 +475,47 @@ void testHeadersForLocatorWithStopHashBoundsResponse() {
                "La synchronisation avec stop doit commencer apres locator et s'arreter au stop hash.");
 }
 
+void testBlocksFromHeightAndLocatorHelpers() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 4};
+    chain.minePendingTransactions("miner");
+    chain.minePendingTransactions("miner");
+    chain.minePendingTransactions("miner");
+
+    const auto blocks = chain.getBlocksFromHeight(1, 2);
+    assertTrue(blocks.size() == 2, "La recuperation blocks doit respecter start+maxCount.");
+    assertTrue(blocks[0].index == 1 && blocks[1].index == 2,
+               "Les blocks renvoyes doivent etre ordonnes par hauteur.");
+    assertTrue(blocks[1].previousHash == blocks[0].hash,
+               "Chaque block summary doit pointer vers le hash precedent.");
+
+    const auto locator = chain.getBlockLocatorHashes();
+    const auto none = chain.getBlocksForLocator(locator, 2);
+    assertTrue(none.empty(), "Avec un locator au tip local, aucun block supplementaire ne doit etre renvoye.");
+
+    const std::string forkPointHash = chain.getChain()[1].getHash();
+    const auto fromForkPoint = chain.getBlocksForLocator({"unknown", forkPointHash}, 5);
+    assertTrue(fromForkPoint.size() == 2,
+               "La synchronisation blocks doit renvoyer les blocs apres le plus haut hash connu.");
+    assertTrue(fromForkPoint[0].index == 2 && fromForkPoint[1].index == 3,
+               "La reponse blocks-sync doit commencer juste apres le dernier bloc commun.");
+}
+
+void testBlocksForLocatorWithStopHashBoundsResponse() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 4};
+    chain.minePendingTransactions("miner");
+    chain.minePendingTransactions("miner");
+    chain.minePendingTransactions("miner");
+
+    const std::string forkPointHash = chain.getChain()[1].getHash();
+    const std::string stopHash = chain.getChain()[2].getHash();
+
+    const auto blocks = chain.getBlocksForLocatorWithStop({forkPointHash}, 10, stopHash);
+    assertTrue(blocks.size() == 1,
+               "Le stop hash doit borner la reponse blocks-sync au bloc cible inclus.");
+    assertTrue(blocks.front().index == 2,
+               "La synchronisation blocks avec stop doit commencer apres locator et s'arreter au stop hash.");
+}
+
 void testHeadersForLocatorWithUnknownStopHashFallsBackToMaxCount() {
     Blockchain chain{1, Transaction::fromNOVA(25.0), 4};
     chain.minePendingTransactions("miner");
@@ -804,6 +845,8 @@ int main() {
         testHeadersForLocatorReturnsNextSegment();
         testHeadersForLocatorWithStopHashBoundsResponse();
         testHeadersForLocatorWithUnknownStopHashFallsBackToMaxCount();
+        testBlocksFromHeightAndLocatorHelpers();
+        testBlocksForLocatorWithStopHashBoundsResponse();
         testBlockSummaryLookupByHeightAndHash();
         testRecentBlockSummariesAreOrderedFromTip();
         testFindTransactionByIdForConfirmedTransaction();
