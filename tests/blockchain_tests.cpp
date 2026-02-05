@@ -240,6 +240,37 @@ void testReorgMempoolRemovesTransactionsAlreadyOnNewChain() {
     assertTrue(chain.getPendingTransactions().front().id() == txB.id(),
                "Seule la transaction non incluse sur la nouvelle branche doit rester en mempool.");
 }
+
+void testReorgMempoolDropsNowUnfundedTransactions() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 5};
+    const std::vector<Block> forkBase = chain.getChain();
+    chain.minePendingTransactions("miner");
+
+    const Transaction spendA{"miner", "alice", Transaction::fromNOVA(10.0), nowSeconds(), Transaction::fromNOVA(0.1)};
+    const Transaction spendB{"miner", "bob", Transaction::fromNOVA(10.0), nowSeconds(), Transaction::fromNOVA(0.1)};
+
+    chain.createTransaction(spendA);
+    chain.createTransaction(spendB);
+
+    std::vector<Block> candidate = forkBase;
+    candidate.emplace_back(static_cast<std::uint64_t>(candidate.size()),
+                           candidate.back().getHash(),
+                           std::vector<Transaction>{
+                               Transaction{"network", "alt-miner", Transaction::fromNOVA(25.0), nowSeconds(), 0}},
+                           1);
+    candidate.back().mine();
+    candidate.emplace_back(static_cast<std::uint64_t>(candidate.size()),
+                           candidate.back().getHash(),
+                           std::vector<Transaction>{
+                               Transaction{"network", "alt-miner", Transaction::fromNOVA(25.0), nowSeconds(), 0}},
+                           1);
+    candidate.back().mine();
+
+    const bool adopted = chain.tryAdoptChain(candidate);
+    assertTrue(adopted, "La reorg vers une chaine plus lourde doit etre acceptee.");
+    assertTrue(chain.getPendingTransactions().empty(),
+               "Apres reorg, les transactions mempool non financables doivent etre purgees.");
+}
 void testAmountConversionRoundTrip() {
     const Amount sats = Transaction::fromNOVA(12.3456789);
     assertAmountEq(sats, 1'234'567'890, "La conversion NOVA -> satoshis doit etre exacte a 8 decimales.");
@@ -277,6 +308,7 @@ int main() {
         testRejectChainWithoutMoreWork();
         testReorgReinjectsDetachedTransactionsIntoMempool();
         testReorgMempoolRemovesTransactionsAlreadyOnNewChain();
+        testReorgMempoolDropsNowUnfundedTransactions();
         testAmountConversionRoundTrip();
         testDifficultyRetargetIncreasesWhenBlocksTooFast();
         std::cout << "Tous les tests Novacoin sont passes.\n";

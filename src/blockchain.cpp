@@ -504,7 +504,47 @@ void Blockchain::rebuildPendingTransactionsAfterReorg(const std::vector<Block>& 
         appendIfValid(tx);
     }
 
-    pendingTransactions_ = std::move(rebuilt);
+    // Revalide l'ensemble de la mempool sur le nouvel etat de chaine. Une reorg profonde
+    // peut invalider des transactions autrefois valides (soldes insuffisants apres fork).
+    std::vector<std::size_t> order(rebuilt.size());
+    for (std::size_t i = 0; i < rebuilt.size(); ++i) {
+        order[i] = i;
+    }
+    std::stable_sort(order.begin(), order.end(), [&rebuilt](std::size_t lhs, std::size_t rhs) {
+        if (rebuilt[lhs].fee != rebuilt[rhs].fee) {
+            return rebuilt[lhs].fee > rebuilt[rhs].fee;
+        }
+        return rebuilt[lhs].timestamp < rebuilt[rhs].timestamp;
+    });
+
+    std::unordered_map<std::string, Amount> projectedBalance;
+    std::vector<Transaction> revalidated;
+    revalidated.reserve(rebuilt.size());
+
+    for (const std::size_t idx : order) {
+        const Transaction& candidate = rebuilt[idx];
+
+        if (projectedBalance.find(candidate.from) == projectedBalance.end()) {
+            projectedBalance[candidate.from] = getBalance(candidate.from);
+        }
+        if (projectedBalance.find(candidate.to) == projectedBalance.end()) {
+            projectedBalance[candidate.to] = getBalance(candidate.to);
+        }
+
+        Amount debit = 0;
+        if (!safeAdd(candidate.amount, candidate.fee, debit) || projectedBalance[candidate.from] < debit) {
+            continue;
+        }
+
+        projectedBalance[candidate.from] -= debit;
+        if (!safeAdd(projectedBalance[candidate.to], candidate.amount, projectedBalance[candidate.to])) {
+            continue;
+        }
+
+        revalidated.push_back(candidate);
+    }
+
+    pendingTransactions_ = std::move(revalidated);
 }
 
 bool Blockchain::tryAdoptChain(const std::vector<Block>& candidateChain) {
