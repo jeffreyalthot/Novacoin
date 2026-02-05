@@ -43,6 +43,15 @@ double parseDouble(const std::string& raw, const std::string& field) {
     return value;
 }
 
+std::size_t parseSize(const std::string& raw, const std::string& field) {
+    std::size_t consumed = 0;
+    const auto value = std::stoull(raw, &consumed);
+    if (consumed != raw.size()) {
+        throw std::invalid_argument("Valeur invalide pour " + field + ": " + raw);
+    }
+    return static_cast<std::size_t>(value);
+}
+
 Blockchain makeDemoChain() {
     Blockchain chain{2, Transaction::fromNOVA(50.0), 8};
     chain.minePendingTransactions("miner");
@@ -149,8 +158,8 @@ int main(int argc, char* argv[]) {
                 return 1;
             }
 
-            const std::size_t startHeight = static_cast<std::size_t>(std::stoull(argv[2]));
-            const std::size_t maxCount = static_cast<std::size_t>(std::stoull(argv[3]));
+            const std::size_t startHeight = parseSize(argv[2], "start_height");
+            const std::size_t maxCount = parseSize(argv[3], "max_count");
             const auto headers = chain.getHeadersFromHeight(startHeight, maxCount);
             std::cout << "headers=" << headers.size() << "\n";
             for (const auto& header : headers) {
@@ -166,7 +175,7 @@ int main(int argc, char* argv[]) {
                 return 1;
             }
 
-            const std::size_t maxCount = static_cast<std::size_t>(std::stoull(argv[2]));
+            const std::size_t maxCount = parseSize(argv[2], "max_count");
             std::vector<std::string> locatorHashes;
             locatorHashes.reserve(static_cast<std::size_t>(argc > 3 ? argc - 3 : 0));
             for (int i = 3; i < argc; ++i) {
@@ -188,7 +197,7 @@ int main(int argc, char* argv[]) {
                 return 1;
             }
 
-            const std::size_t maxCount = static_cast<std::size_t>(std::stoull(argv[2]));
+            const std::size_t maxCount = parseSize(argv[2], "max_count");
             const std::string stopHash = argv[3];
             std::vector<std::string> locatorHashes;
             locatorHashes.reserve(static_cast<std::size_t>(argc > 4 ? argc - 4 : 0));
@@ -227,7 +236,7 @@ int main(int argc, char* argv[]) {
 
             std::optional<BlockSummary> summary;
             try {
-                const std::size_t height = static_cast<std::size_t>(std::stoull(argv[2]));
+                const std::size_t height = parseSize(argv[2], "height");
                 summary = chain.getBlockSummaryByHeight(height);
             } catch (const std::exception&) {
                 summary = chain.getBlockSummaryByHash(argv[2]);
@@ -252,7 +261,7 @@ int main(int argc, char* argv[]) {
                 return 1;
             }
 
-            const std::size_t maxCount = static_cast<std::size_t>(std::stoull(argv[2]));
+            const std::size_t maxCount = parseSize(argv[2], "max_count");
             const auto summaries = chain.getRecentBlockSummaries(maxCount);
             std::cout << "blocks=" << summaries.size() << "\n";
             for (const auto& summary : summaries) {
@@ -298,7 +307,7 @@ int main(int argc, char* argv[]) {
                 return 1;
             }
 
-            const std::size_t limit = static_cast<std::size_t>(std::stoull(argv[2]));
+            const std::size_t limit = parseSize(argv[2], "limit");
             const auto topBalances = chain.getTopBalances(limit);
             std::cout << "Top balances (limit=" << limit << ")\n";
             for (std::size_t i = 0; i < topBalances.size(); ++i) {
