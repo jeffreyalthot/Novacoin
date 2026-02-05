@@ -373,6 +373,37 @@ Amount Blockchain::getTotalSupply() const {
     return supply;
 }
 
+Amount Blockchain::estimateSupplyAtHeight(std::size_t height) const {
+    Amount projected = 0;
+
+    for (std::size_t h = 1; h <= height; ++h) {
+        Amount next = 0;
+        if (!safeAdd(projected, blockSubsidyAtHeight(h), next)) {
+            throw std::overflow_error("Overflow projected supply.");
+        }
+        projected = std::min(next, kMaxSupply);
+        if (projected >= kMaxSupply) {
+            break;
+        }
+    }
+
+    return projected;
+}
+
+MonetaryProjection Blockchain::getMonetaryProjection(std::size_t height) const {
+    MonetaryProjection projection{};
+    projection.height = height;
+    projection.currentSubsidy = blockSubsidyAtHeight(height);
+    projection.projectedSupply = estimateSupplyAtHeight(height);
+    projection.remainingIssuable = std::max<Amount>(0, kMaxSupply - projection.projectedSupply);
+
+    const std::size_t nextHalving = ((height / kHalvingInterval) + 1) * kHalvingInterval;
+    projection.nextHalvingHeight = nextHalving;
+    projection.nextSubsidy = blockSubsidyAtHeight(nextHalving);
+
+    return projection;
+}
+
 unsigned int Blockchain::getCurrentDifficulty() const {
     return chain_.empty() ? initialDifficulty_ : chain_.back().getDifficulty();
 }
@@ -1251,6 +1282,9 @@ std::string Blockchain::getChainSummary() const {
     out << "- blocks=" << getBlockCount() << "\n";
     out << "- total_supply=" << Transaction::toNOVA(getTotalSupply()) << " / " << Transaction::toNOVA(kMaxSupply)
         << "\n";
+    const auto monetary = getMonetaryProjection(chain_.empty() ? 0 : chain_.size() - 1);
+    out << "- issuance_remaining=" << Transaction::toNOVA(monetary.remainingIssuable) << "\n";
+    out << "- subsidy_current=" << Transaction::toNOVA(monetary.currentSubsidy) << "\n";
     out << "- next_reward_estimate=" << Transaction::toNOVA(estimateNextMiningReward()) << "\n";
     out << "- current_difficulty=" << getCurrentDifficulty() << "\n";
     out << "- next_difficulty_estimate=" << estimateNextDifficulty() << "\n";

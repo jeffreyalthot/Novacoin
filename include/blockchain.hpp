@@ -69,6 +69,15 @@ struct TransactionLookup {
     std::optional<std::size_t> blockHeight;
 };
 
+struct MonetaryProjection {
+    std::size_t height = 0;
+    Amount currentSubsidy = 0;
+    Amount projectedSupply = 0;
+    Amount remainingIssuable = 0;
+    std::size_t nextHalvingHeight = 0;
+    Amount nextSubsidy = 0;
+};
+
 class Blockchain {
 public:
     static constexpr Amount kMaxSupply = consensus::kMaxSupply;
@@ -134,6 +143,8 @@ public:
     [[nodiscard]] std::optional<BlockSummary> getBlockSummaryByHash(const std::string& hash) const;
     [[nodiscard]] std::vector<BlockSummary> getRecentBlockSummaries(std::size_t maxCount) const;
     [[nodiscard]] std::optional<TransactionLookup> findTransactionById(const std::string& txId) const;
+    [[nodiscard]] Amount estimateSupplyAtHeight(std::size_t height) const;
+    [[nodiscard]] MonetaryProjection getMonetaryProjection(std::size_t height) const;
     [[nodiscard]] bool tryAdoptChain(const std::vector<Block>& candidateChain);
     [[nodiscard]] const std::vector<Block>& getChain() const;
     [[nodiscard]] const std::vector<Transaction>& getPendingTransactions() const;
