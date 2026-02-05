@@ -1,0 +1,2 @@
+# Novacoin
+Blockchain for Novacoin
