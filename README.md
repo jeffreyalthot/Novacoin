@@ -8,6 +8,7 @@ Implémentation cohérente d'une blockchain simplifiée en C++ pour le projet No
 - Minage par preuve de travail (difficulté configurable).
 - Transactions signées par des adresses (source / destination / montant / frais / timestamp).
 - Gestion d'un mempool (`pendingTransactions`) et récompense de minage majorée par les frais collectés.
+- Capacité maximale configurable de transactions par bloc (minage fractionné du mempool).
 - Vérification d'intégrité complète de la chaîne (`isValid`).
 - Vérification des fonds disponibles avant d'ajouter une transaction.
 - Historique des transactions par adresse (incluant les transactions en attente).
