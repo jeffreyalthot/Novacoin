@@ -14,6 +14,9 @@ public:
 
     [[nodiscard]] double getBalance(const std::string& address) const;
     [[nodiscard]] double getAvailableBalance(const std::string& address) const;
+    [[nodiscard]] double estimateNextMiningReward() const;
+    [[nodiscard]] double getTotalSupply() const;
+    [[nodiscard]] std::size_t getBlockCount() const;
     [[nodiscard]] std::vector<Transaction> getTransactionHistory(const std::string& address) const;
     [[nodiscard]] bool isValid() const;
     [[nodiscard]] const std::vector<Block>& getChain() const;

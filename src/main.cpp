@@ -30,10 +30,14 @@ int main() {
 
         novacoin.createTransaction(Transaction{"alice", "bob", 10.0, nowSeconds(), 0.15});
         novacoin.createTransaction(Transaction{"bob", "charlie", 3.5, nowSeconds(), 0.05});
+
+        std::cout << "Récompense estimée du prochain bloc: " << novacoin.estimateNextMiningReward() << "\n";
         novacoin.minePendingTransactions("miner1");
 
         novacoin.createTransaction(Transaction{"miner1", "alice", 5.0, nowSeconds(), 0.1});
 
+        std::cout << "Nombre de blocs: " << novacoin.getBlockCount() << "\n";
+        std::cout << "Masse monétaire totale: " << novacoin.getTotalSupply() << "\n";
         std::cout << "Chaîne valide: " << std::boolalpha << novacoin.isValid() << "\n";
         std::cout << "Solde de alice: " << novacoin.getBalance("alice") << "\n";
         std::cout << "Solde disponible de miner1: " << novacoin.getAvailableBalance("miner1") << "\n";
