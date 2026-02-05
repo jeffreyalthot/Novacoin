@@ -4,6 +4,6 @@
 
 std::string Transaction::serialize() const {
     std::ostringstream out;
-    out << from << '|' << to << '|' << amount << '|' << timestamp;
+    out << from << '|' << to << '|' << amount << '|' << timestamp << '|' << fee;
     return out.str();
 }

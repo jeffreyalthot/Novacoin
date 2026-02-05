@@ -8,6 +8,7 @@ struct Transaction {
     std::string to;
     double amount{0.0};
     std::uint64_t timestamp{0};
+    double fee{0.0};
 
     std::string serialize() const;
 };
