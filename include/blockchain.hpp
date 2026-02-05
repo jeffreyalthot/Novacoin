@@ -1,6 +1,7 @@
 #pragma once
 
 #include "block.hpp"
+#include "consensus.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -9,22 +10,22 @@
 
 class Blockchain {
 public:
-    static constexpr double kMaxSupply = 29'000'000.0;
-    static constexpr std::size_t kHalvingInterval = 100;
-    static constexpr std::uint64_t kMaxFutureDriftSeconds = 2 * 60 * 60;
-    static constexpr double kMinRelayFee = 0.0001;
+    static constexpr Amount kMaxSupply = consensus::kMaxSupply;
+    static constexpr std::size_t kHalvingInterval = consensus::kHalvingInterval;
+    static constexpr std::uint64_t kMaxFutureDriftSeconds = consensus::kMaxFutureDriftSeconds;
+    static constexpr Amount kMinRelayFee = consensus::kMinRelayFee;
 
     explicit Blockchain(unsigned int difficulty = 4,
-                        double miningReward = 12.5,
+                        Amount miningReward = consensus::kInitialBlockReward,
                         std::size_t maxTransactionsPerBlock = 100);
 
     void createTransaction(const Transaction& tx);
     void minePendingTransactions(const std::string& minerAddress);
 
-    [[nodiscard]] double getBalance(const std::string& address) const;
-    [[nodiscard]] double getAvailableBalance(const std::string& address) const;
-    [[nodiscard]] double estimateNextMiningReward() const;
-    [[nodiscard]] double getTotalSupply() const;
+    [[nodiscard]] Amount getBalance(const std::string& address) const;
+    [[nodiscard]] Amount getAvailableBalance(const std::string& address) const;
+    [[nodiscard]] Amount estimateNextMiningReward() const;
+    [[nodiscard]] Amount getTotalSupply() const;
     [[nodiscard]] std::size_t getBlockCount() const;
     [[nodiscard]] std::vector<Transaction> getTransactionHistory(const std::string& address) const;
     [[nodiscard]] bool isValid() const;
@@ -34,11 +35,11 @@ public:
     [[nodiscard]] const std::vector<Transaction>& getPendingTransactions() const;
 
 private:
-    [[nodiscard]] double blockSubsidyAtHeight(std::size_t height) const;
+    [[nodiscard]] Amount blockSubsidyAtHeight(std::size_t height) const;
     [[nodiscard]] bool isTimestampAcceptable(std::uint64_t timestamp) const;
 
     unsigned int difficulty_;
-    double miningReward_;
+    Amount miningReward_;
     std::size_t maxTransactionsPerBlock_;
     std::vector<Block> chain_;
     std::vector<Transaction> pendingTransactions_;
