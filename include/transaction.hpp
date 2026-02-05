@@ -11,4 +11,5 @@ struct Transaction {
     double fee{0.0};
 
     std::string serialize() const;
+    std::string id() const;
 };

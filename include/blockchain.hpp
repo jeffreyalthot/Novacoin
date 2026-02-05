@@ -25,6 +25,8 @@ public:
     [[nodiscard]] std::size_t getBlockCount() const;
     [[nodiscard]] std::vector<Transaction> getTransactionHistory(const std::string& address) const;
     [[nodiscard]] bool isValid() const;
+    [[nodiscard]] std::string getChainSummary() const;
+    [[nodiscard]] std::vector<Transaction> getPendingTransactionsForBlockTemplate() const;
     [[nodiscard]] const std::vector<Block>& getChain() const;
     [[nodiscard]] const std::vector<Transaction>& getPendingTransactions() const;
 
