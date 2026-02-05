@@ -49,7 +49,7 @@ bool hasNonDecreasingTimestamps(const std::vector<Transaction>& transactions) {
 } // namespace
 
 Blockchain::Blockchain(unsigned int difficulty, Amount miningReward, std::size_t maxTransactionsPerBlock)
-    : difficulty_(difficulty),
+    : initialDifficulty_(std::clamp(difficulty, kMinDifficulty, kMaxDifficulty)),
       miningReward_(miningReward),
       maxTransactionsPerBlock_(maxTransactionsPerBlock),
       chain_({createGenesisBlock()}),
@@ -64,8 +64,8 @@ Blockchain::Blockchain(unsigned int difficulty, Amount miningReward, std::size_t
 
 Block Blockchain::createGenesisBlock() const {
     Transaction bootstrap{"network", "genesis", 0, nowSeconds(), 0};
-    Block genesis{0, "0", {bootstrap}};
-    genesis.mine(difficulty_);
+    Block genesis{0, "0", {bootstrap}, initialDifficulty_};
+    genesis.mine();
     return genesis;
 }
 
@@ -81,6 +81,31 @@ Amount Blockchain::blockSubsidyAtHeight(std::size_t height) const {
 
 bool Blockchain::isTimestampAcceptable(std::uint64_t timestamp) const {
     return timestamp <= nowSeconds() + kMaxFutureDriftSeconds;
+}
+
+unsigned int Blockchain::expectedDifficultyAtHeight(std::size_t height) const {
+    if (height == 0 || chain_.empty()) {
+        return initialDifficulty_;
+    }
+
+    const unsigned int previousDifficulty = chain_[height - 1].getDifficulty();
+    if (height % kDifficultyAdjustmentInterval != 0 || height < kDifficultyAdjustmentInterval) {
+        return previousDifficulty;
+    }
+
+    const std::uint64_t firstTimestamp = chain_[height - kDifficultyAdjustmentInterval].getTimestamp();
+    const std::uint64_t lastTimestamp = chain_[height - 1].getTimestamp();
+    const std::uint64_t actualTimespan = std::max<std::uint64_t>(1, lastTimestamp - firstTimestamp);
+    const std::uint64_t targetTimespan = kDifficultyAdjustmentInterval * kTargetBlockTimeSeconds;
+
+    if (actualTimespan < targetTimespan / 2) {
+        return std::min(kMaxDifficulty, previousDifficulty + 1);
+    }
+    if (actualTimespan > targetTimespan * 2) {
+        return std::max(kMinDifficulty, previousDifficulty - 1);
+    }
+
+    return previousDifficulty;
 }
 
 void Blockchain::createTransaction(const Transaction& tx) {
@@ -186,8 +211,11 @@ void Blockchain::minePendingTransactions(const std::string& minerAddress) {
     const Amount mintedReward = std::min(scheduledReward, remainingSupply);
     transactionsToMine.push_back(Transaction{"network", minerAddress, mintedReward, nowSeconds(), 0});
 
-    Block blockToMine{chain_.size(), chain_.back().getHash(), transactionsToMine};
-    blockToMine.mine(difficulty_);
+    Block blockToMine{chain_.size(),
+                      chain_.back().getHash(),
+                      transactionsToMine,
+                      expectedDifficultyAtHeight(chain_.size())};
+    blockToMine.mine();
     chain_.push_back(blockToMine);
 
     std::unordered_map<std::string, bool> minedIds;
@@ -277,6 +305,12 @@ Amount Blockchain::getTotalSupply() const {
     return supply;
 }
 
+unsigned int Blockchain::getCurrentDifficulty() const {
+    return chain_.empty() ? initialDifficulty_ : chain_.back().getDifficulty();
+}
+
+unsigned int Blockchain::estimateNextDifficulty() const { return expectedDifficultyAtHeight(chain_.size()); }
+
 std::size_t Blockchain::getBlockCount() const { return chain_.size(); }
 
 std::vector<Transaction> Blockchain::getTransactionHistory(const std::string& address) const {
@@ -315,15 +349,18 @@ bool Blockchain::isValid() const {
         }
 
         if (i == 0) {
-            if (!current.hasValidHash(difficulty_)) {
+            if (!current.hasValidHash() || current.getDifficulty() != initialDifficulty_) {
                 return false;
             }
         } else {
             const auto& previous = chain_[i - 1];
-            if (current.getPreviousHash() != previous.getHash() || !current.hasValidHash(difficulty_)) {
+            if (current.getPreviousHash() != previous.getHash() || !current.hasValidHash()) {
                 return false;
             }
             if (current.getTimestamp() + 1 < previous.getTimestamp()) {
+                return false;
+            }
+            if (current.getDifficulty() != expectedDifficultyAtHeight(i)) {
                 return false;
             }
         }
@@ -443,6 +480,8 @@ std::string Blockchain::getChainSummary() const {
     out << "- total_supply=" << Transaction::toNOVA(getTotalSupply()) << " / " << Transaction::toNOVA(kMaxSupply)
         << "\n";
     out << "- next_reward_estimate=" << Transaction::toNOVA(estimateNextMiningReward()) << "\n";
+    out << "- current_difficulty=" << getCurrentDifficulty() << "\n";
+    out << "- next_difficulty_estimate=" << estimateNextDifficulty() << "\n";
     out << "- pending_transactions=" << pendingTransactions_.size() << "\n";
     return out.str();
 }
