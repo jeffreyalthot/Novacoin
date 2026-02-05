@@ -2,18 +2,267 @@
 
 Implémentation cohérente d'une blockchain simplifiée en C++ pour le projet Novacoin.
 
-## Fonctionnalités
+## Vision du projet
 
-- Blocs chaînés avec `previousHash`.
-- Minage par preuve de travail (difficulté configurable).
-- Transactions signées par des adresses (source / destination / montant / frais / timestamp).
-- Gestion d'un mempool (`pendingTransactions`) et récompense de minage majorée par les frais collectés.
-- Capacité maximale configurable de transactions par bloc (minage fractionné du mempool).
-- Vérification d'intégrité complète de la chaîne (`isValid`).
-- Vérification des fonds disponibles avant d'ajouter une transaction.
-- Historique des transactions par adresse (incluant les transactions en attente).
-- Estimation de la prochaine récompense de minage (récompense de base + frais en mempool).
-- Statistiques réseau: nombre de blocs et masse monétaire totale émise.
+Construire **Novacoin** comme une blockchain **Proof of Work (PoW)** robuste, progressive et auditable, avec une politique monétaire stricte plafonnée à **29 000 000.00000000 NOVA**.
+
+Ce README sert de **plan directeur complet** pour poser les bases techniques, économiques, de sécurité et d'exploitation du réseau.
+
+---
+
+## Principes fondateurs
+
+- **Consensus** : Preuve de Travail (PoW) uniquement.
+- **Offre maximale** : `29_000_000.00000000 NOVA` (hard cap non négociable).
+- **Précision monétaire** : 8 décimales (unité minimale = `0.00000001 NOVA`).
+- **Validation déterministe** : mêmes règles pour tous les nœuds.
+- **Sécurité d'abord** : priorité à l'intégrité de la chaîne, à la résistance aux attaques et à la simplicité vérifiable.
+- **Développement incrémental** : livrer par phases avec critères d'acceptation clairs.
+
+---
+
+## Plan complet de développement
+
+## Phase 0 — Cadrage & Spécification (fondations)
+
+### Objectifs
+
+- Définir la spécification officielle du protocole Novacoin.
+- Geler les règles de consensus de la v1.
+- Poser les conventions de codage, de test et de publication.
+
+### Livrables
+
+- Document de spécification protocolaire (format bloc, transaction, validation, consensus).
+- Règles de sérialisation canonique (endianness, encodages, versions).
+- Stratégie de versioning (compatibilité réseau et hardfork planifiés).
+
+### Critères d'acceptation
+
+- Toute règle de validation est documentée de manière déterministe.
+- Deux implémentations indépendantes produisent le même hash pour les mêmes données.
+
+---
+
+## Phase 1 — Noyau blockchain local (single-node)
+
+### Objectifs
+
+- Mettre en place une chaîne valide localement.
+- Implémenter le minage PoW et la validation complète des blocs.
+
+### Fonctionnalités clés
+
+- Blocs chaînés (`previousHash`) avec horodatage.
+- Transactions UTXO-like simplifiées ou account-based (à figer en Phase 0).
+- Mempool local et inclusion des transactions en blocs.
+- Vérification d'intégrité de bout en bout (`isValidChain`).
+- Gestion des frais de transaction.
+
+### Critères d'acceptation
+
+- Minage d'un bloc valide avec cible de difficulté respectée.
+- Rejet des blocs invalides (hash, signature, double dépense, montant négatif, etc.).
+
+---
+
+## Phase 2 — Économie NOVA & Hard Cap 29M
+
+### Objectifs
+
+- Garantir cryptographiquement que l'émission totale ne dépasse jamais `29_000_000.00000000 NOVA`.
+
+### Règles monétaires à implémenter
+
+- Récompense de bloc initiale définie (ex: `R0`).
+- Mécanisme de réduction (halving ou courbe décroissante prédéfinie).
+- Addition de la récompense + frais au mineur.
+- Vérification à la validation de bloc :
+  - `coinbase <= reward_height + total_fees_block`
+  - `supply_total <= 29_000_000.00000000`
+
+### Critères d'acceptation
+
+- Tests de simulation longue (jusqu'à extinction des récompenses).
+- Assertion stricte côté consensus : impossible de créer 1 satoshi NOVA au-delà du cap.
+
+---
+
+## Phase 3 — Consensus PoW production-ready
+
+### Objectifs
+
+- Rendre le consensus stable sur de longues périodes et sous variation du hashrate.
+
+### Fonctionnalités clés
+
+- Algorithme de difficulté dynamique (retarget périodique ou par bloc).
+- Gestion des réorganisations de chaîne (fork choice : chaîne la plus difficile/cumulative work).
+- Validation stricte des timestamps (bornes dérive temporelle).
+- Protection contre blocs anormaux (taille, poids, sigops selon modèle choisi).
+
+### Critères d'acceptation
+
+- Le réseau se réajuste après simulation de chute/hausse brutale du hashrate.
+- Les nœuds convergent vers la même chaîne canonique.
+
+---
+
+## Phase 4 — Réseau P2P (multi-nœuds)
+
+### Objectifs
+
+- Passer d'une chaîne locale à un réseau distribué de nœuds synchronisés.
+
+### Fonctionnalités clés
+
+- Découverte de pairs (seed nodes, DNS seeds éventuels).
+- Messages P2P minimaux : `version`, `verack`, `inv`, `getdata`, `block`, `tx`.
+- Synchronisation initiale de la chaîne (IBD simplifiée).
+- Politique anti-spam et limitation de débit.
+
+### Critères d'acceptation
+
+- Plusieurs nœuds démarrés sur machines différentes se synchronisent.
+- Propagation d'un nouveau bloc sur l'ensemble du réseau dans un délai mesurable.
+
+---
+
+## Phase 5 — Stockage, persistance & performances
+
+### Objectifs
+
+- Assurer la durabilité des données et de bonnes performances de validation.
+
+### Fonctionnalités clés
+
+- Persistance des blocs, index de transactions et état (UTXO/compte).
+- Reprise après crash sans corruption logique.
+- Cache mémoire pour accélérer validation et requêtes.
+- Outils de reindexation et de vérification de base.
+
+### Critères d'acceptation
+
+- Redémarrage nœud avec restauration cohérente de l'état.
+- Benchmarks documentés (temps de sync, validation par bloc).
+
+---
+
+## Phase 6 — Wallet, signatures & sécurité utilisateur
+
+### Objectifs
+
+- Permettre l'utilisation réelle de NOVA avec sécurité minimale robuste.
+
+### Fonctionnalités clés
+
+- Génération d'adresses et gestion de clés (format standardisé).
+- Signature et vérification des transactions.
+- Portefeuille local (solde, historique, envoi, frais).
+- Export/import sécurisé des clés (chiffrement recommandé).
+
+### Critères d'acceptation
+
+- Transactions signées valides de bout en bout entre deux wallets.
+- Tests contre signatures invalides, rejouées ou mal formées.
+
+---
+
+## Phase 7 — API, CLI & observabilité
+
+### Objectifs
+
+- Faciliter l'exploitation développeur, opérateur et intégrateur.
+
+### Fonctionnalités clés
+
+- CLI nœud (`start`, `status`, `mine`, `send`, `getblock`, `gettx`).
+- API RPC/REST versionnée.
+- Métriques (hashrate local, hauteur, peers, mempool, orphan rate).
+- Logs structurés (niveaux, corrélation, événements consensus).
+
+### Critères d'acceptation
+
+- Opérations principales réalisables sans modifier le code.
+- Monitoring basique possible via endpoint métriques.
+
+---
+
+## Phase 8 — Tests, qualité & audit sécurité
+
+### Objectifs
+
+- Atteindre un niveau de fiabilité compatible avec un réseau ouvert.
+
+### Plan qualité
+
+- Tests unitaires (hash, signatures, règles de validation).
+- Tests d'intégration (mempool → bloc → propagation → réorg).
+- Tests de propriété/fuzzing (parsers, sérialisation, transactions invalides).
+- Tests de charge (mempool massif, sync longue, forks fréquents).
+- Revue de sécurité externe (audit ciblé consensus + wallet).
+
+### Critères d'acceptation
+
+- Couverture pertinente sur composants critiques.
+- Aucun bug consensus de sévérité critique ouvert avant testnet public.
+
+---
+
+## Phase 9 — Testnet, gouvernance technique & lancement mainnet
+
+### Objectifs
+
+- Lancer Novacoin de manière maîtrisée et transparente.
+
+### Étapes
+
+1. **Devnet interne** : validation continue des nouveautés.
+2. **Testnet public** : stress réel, retours communauté.
+3. **Freeze protocole v1** : verrouillage des paramètres consensus.
+4. **Genesis mainnet** : lancement officiel et monitoring 24/7.
+5. **Post-launch** : runbook incidents, politique de patchs, roadmap v2.
+
+### Critères d'acceptation
+
+- Comportement stable plusieurs semaines en testnet.
+- Documentation opérateur complète avant mainnet.
+
+---
+
+## Paramètres consensus à figer dès le départ
+
+- Algorithme PoW exact.
+- Temps cible de bloc.
+- Fenêtre/algorithme de retarget difficulté.
+- Récompense initiale et calendrier de réduction.
+- Règles coinbase (maturité, format, plafond par bloc).
+- Taille/poids maximal des blocs.
+- Règles mempool minimales (frais minimum, standardness).
+- Checkpoints éventuels (uniquement bootstrap, jamais consensus caché).
+
+---
+
+## Politique monétaire de Novacoin (exigence centrale)
+
+- **Supply maximale absolue** : `29_000_000.00000000 NOVA`.
+- Cette limite doit être protégée par :
+  - des règles de consensus ;
+  - des tests de non-régression ;
+  - des vérifications explicites à chaque bloc.
+- Aucun mode opératoire (RPC, wallet, minage, import) ne doit contourner ce plafond.
+
+---
+
+## Organisation recommandée du dépôt
+
+- `include/` : interfaces des composants cœur.
+- `src/` : implémentation nœud, consensus, réseau, wallet.
+- `tests/` : unitaires, intégration, fuzz/property.
+- `docs/` : spécification protocole, runbooks, architecture.
+- `scripts/` : outillage build, simulation, diagnostic.
+
+---
 
 ## Build
 
@@ -28,9 +277,10 @@ cmake --build build
 ./build/novacoin
 ```
 
-## Structure
+## Prochaines actions immédiates (Sprint 1)
 
-- `include/transaction.hpp` : modèle de transaction.
-- `include/block.hpp` : bloc minable + hash de contenu.
-- `include/blockchain.hpp` : logique de chaîne, minage, validation, solde et historique.
-- `src/main.cpp` : scénario de démonstration complet.
+- Finaliser la spécification de consensus v1.
+- Implémenter les assertions du hard cap `29_000_000.00000000` dans la validation de bloc.
+- Ajouter un jeu de tests monétaires (émission cumulée, halving, plafond).
+- Mettre en place les premiers tests d'intégration multi-blocs.
+- Documenter les paramètres de genesis (timestamp, difficulté initiale, message genesis).
