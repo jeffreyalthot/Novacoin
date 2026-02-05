@@ -57,17 +57,14 @@ void Blockchain::minePendingTransactions(const std::string& minerAddress) {
         return;
     }
 
-    double totalFees = 0.0;
-    for (const auto& tx : pendingTransactions_) {
-        totalFees += tx.fee;
-    }
+    const double nextReward = estimateNextMiningReward();
 
     Block blockToMine{chain_.size(), chain_.back().getHash(), pendingTransactions_};
     blockToMine.mine(difficulty_);
     chain_.push_back(blockToMine);
 
     pendingTransactions_.clear();
-    pendingTransactions_.push_back(Transaction{"network", minerAddress, miningReward_ + totalFees, nowSeconds(), 0.0});
+    pendingTransactions_.push_back(Transaction{"network", minerAddress, nextReward, nowSeconds(), 0.0});
 }
 
 double Blockchain::getBalance(const std::string& address) const {
@@ -100,6 +97,38 @@ double Blockchain::getAvailableBalance(const std::string& address) const {
     }
 
     return balance;
+}
+
+double Blockchain::estimateNextMiningReward() const {
+    double totalFees = 0.0;
+    for (const auto& tx : pendingTransactions_) {
+        totalFees += tx.fee;
+    }
+    return miningReward_ + totalFees;
+}
+
+double Blockchain::getTotalSupply() const {
+    double supply = 0.0;
+
+    for (const auto& block : chain_) {
+        for (const auto& tx : block.getTransactions()) {
+            if (tx.from == "network") {
+                supply += tx.amount;
+            }
+        }
+    }
+
+    for (const auto& tx : pendingTransactions_) {
+        if (tx.from == "network") {
+            supply += tx.amount;
+        }
+    }
+
+    return supply;
+}
+
+std::size_t Blockchain::getBlockCount() const {
+    return chain_.size();
 }
 
 std::vector<Transaction> Blockchain::getTransactionHistory(const std::string& address) const {

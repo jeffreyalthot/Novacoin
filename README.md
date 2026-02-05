@@ -11,6 +11,8 @@ Implémentation cohérente d'une blockchain simplifiée en C++ pour le projet No
 - Vérification d'intégrité complète de la chaîne (`isValid`).
 - Vérification des fonds disponibles avant d'ajouter une transaction.
 - Historique des transactions par adresse (incluant les transactions en attente).
+- Estimation de la prochaine récompense de minage (récompense de base + frais en mempool).
+- Statistiques réseau: nombre de blocs et masse monétaire totale émise.
 
 ## Build
 
