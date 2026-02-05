@@ -345,3 +345,58 @@ cmake --build build
 25. **Planifier un devnet multi-nœuds** avec objectifs de performance et scénarios d'attaque simulés.
 26. **Préparer un mode de stockage append-only avec checksums** pour détecter toute corruption disque silencieuse.
 27. **Définir une stratégie de bootstrapping sécurisé** (checkpoints signés, validation progressive, reprise interrompue).
+
+### Priorité P4 — Réseau distribué & résilience opérationnelle
+
+28. **Implémenter un gestionnaire de pairs avec score de réputation** (ban temporaire, décay du score, critères de réhabilitation).
+29. **Ajouter des protections anti-eclipse** (diversité d'ASN/IP, plafonds de connexions par sous-réseau, rotation périodique).
+30. **Introduire des limites DoS par type de message P2P** (budget CPU/mémoire/IO par pair).
+31. **Ajouter une propagation compacte des blocs** (inventaires légers + récupération des transactions manquantes).
+32. **Mettre en place la synchronisation headers-first** avec checkpoints de progression et reprise partielle.
+33. **Créer un mode pruning configurable** pour réduire l'empreinte disque des nœuds non archivaux.
+34. **Ajouter un journal de télémétrie réseau local** (latence pair, débit entrant/sortant, taux d'échec).
+35. **Déployer un harness de simulation multi-nœuds** (réseau partitionné, latence variable, churn élevé).
+36. **Ajouter des scénarios de réorganisation profonde** (N blocs) pour valider la robustesse état + mempool.
+37. **Définir des objectifs SLO opérateur** (temps de rattrapage IBD, délai de propagation bloc, taux de rejet invalide).
+
+### Priorité P5 — Wallet, clés et sécurité applicative
+
+38. **Migrer vers une gestion de clés hiérarchique (HD)** avec dérivation déterministe et chemins documentés.
+39. **Ajouter un chiffrement wallet fort** (KDF paramétrable, rotation de mot de passe, verrouillage automatique).
+40. **Introduire un format d'export/import standardisé** avec checksum et métadonnées de version.
+41. **Ajouter un mécanisme d'adresses de changement** et sélection de sorties minimisant la fragmentation.
+42. **Implémenter la signature hors-ligne (PSBT-like simplifié)** pour préparer un usage hardware/air-gapped.
+43. **Créer un module de politique de frais wallet** (estimation locale, mode éco/normal/rapide).
+44. **Ajouter une protection anti-rejeu inter-chaînes** (domain separation / chain id explicite).
+45. **Mettre en place un test de restauration wallet de bout en bout** (seed -> clés -> solde -> envoi).
+
+### Priorité P6 — Gouvernance technique, release engineering & conformité
+
+46. **Définir une politique de versioning réseau stricte** (nVersion, compatibilité ascendante, échéances de dépréciation).
+47. **Automatiser une pipeline CI complète** (build matrice, tests, fuzz smoke, sanitizers, artefacts signés).
+48. **Ajouter des gates qualité release** (zéro bug consensus critique, couverture min, perf max régression).
+49. **Formaliser un cycle de publication** (alpha/devnet, beta/testnet, RC, GA) avec critères de passage.
+50. **Mettre en place un SBOM et une politique de dépendances** (pinning, CVE scan, fenêtre de patch).
+51. **Définir un processus de divulgation de vulnérabilité** (security policy, canal privé, SLA de réponse).
+52. **Ajouter un plan de reprise incident consensus** (kill-switch non-consensus, procédure de rollback opérateur).
+53. **Documenter des runbooks détaillés** (fork inattendu, dérive horloge, saturation mempool, corruption index).
+54. **Préparer une checklist de lancement testnet public** (monitoring, seeds, communication, support).
+55. **Définir une stratégie post-mainnet** (maintenance LTS, politique hardfork, gouvernance des changements).
+
+### Backlog transverse (à distribuer sur toutes les priorités)
+
+- **Performance** : profiler systématiquement les chemins critiques validation/minage et définir des budgets CPU/mémoire par bloc.
+- **Sécurité** : intégrer du fuzzing continu ciblé (parseurs P2P, décodage tx/blocs, interfaces wallet).
+- **Qualité** : imposer des tests de non-régression reproductibles sur seeds fixes et jeux de données versionnés.
+- **Observabilité** : unifier les logs avec identifiants de corrélation (`node_id`, `peer_id`, `block_hash`, `tx_id`).
+- **DX** : proposer des scripts one-shot (`./scripts/devnet.sh`, `./scripts/reindex.sh`, `./scripts/bench.sh`).
+- **Documentation** : tenir une table de traçabilité exigences -> tests -> code pour les règles consensus critiques.
+
+### Découpage recommandé des 6 prochains sprints
+
+- **Sprint 2** : verrouillage du modèle monétaire entier (P0.2, P0.5) + tests de simulation longue (P1.6).
+- **Sprint 3** : coinbase dédiée + maturité (P0.3), sérialisation déterministe (P0.4), validation temporelle renforcée (P1.7).
+- **Sprint 4** : persistance append-only (P3.21, P3.26), reindex + mode vérification démarrage (P1.10).
+- **Sprint 5** : CLI initiale + métriques + logs structurés (P2.15, P2.16, P2.17).
+- **Sprint 6** : headers-first + gestion des pairs + protections DoS de base (P4.28, P4.30, P4.32).
+- **Sprint 7** : wallet HD chiffré + export standard + test de restauration complet (P5.38, P5.39, P5.40, P5.45).
