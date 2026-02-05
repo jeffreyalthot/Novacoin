@@ -613,7 +613,18 @@ bool Blockchain::tryAdoptChain(const std::vector<Block>& candidateChain) {
 
     const std::uint64_t currentWork = computeCumulativeWork(chain_);
     const std::uint64_t candidateWork = computeCumulativeWork(candidateChain);
-    if (candidateWork <= currentWork) {
+    if (candidateWork < currentWork) {
+        return false;
+    }
+
+    if (candidateWork == currentWork) {
+        if (candidateChain.back().getHash() >= chain_.back().getHash()) {
+            return false;
+        }
+    }
+
+    if (candidateChain.size() == chain_.size() &&
+        commonPrefixLength(candidateChain, chain_) == chain_.size()) {
         return false;
     }
 

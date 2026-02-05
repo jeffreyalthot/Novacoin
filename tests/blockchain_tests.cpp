@@ -681,6 +681,43 @@ void testFindTransactionByIdForPendingAndUnknownTransaction() {
     assertTrue(!chain.findTransactionById("unknown-txid").has_value(),
                "Un txid inconnu ne doit retourner aucun resultat.");
 }
+
+void testEqualWorkChainUsesDeterministicTieBreak() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 4};
+    chain.minePendingTransactions("miner");
+
+    std::vector<Block> candidate = chain.getChain();
+    candidate.emplace_back(static_cast<std::uint64_t>(candidate.size()),
+                           candidate.back().getHash(),
+                           std::vector<Transaction>{
+                               Transaction{"network", "alt-miner", Transaction::fromNOVA(25.0), nowSeconds(), 0}},
+                           1);
+    candidate.back().mine();
+
+    std::vector<Block> local = chain.getChain();
+    local.emplace_back(static_cast<std::uint64_t>(local.size()),
+                       local.back().getHash(),
+                       std::vector<Transaction>{
+                           Transaction{"network", "miner", Transaction::fromNOVA(25.0), nowSeconds(), 0}},
+                       1);
+    local.back().mine();
+
+    const bool adopted = chain.tryAdoptChain(candidate);
+    const bool shouldAdopt = candidate.back().getHash() < local.back().getHash();
+    assertTrue(adopted == shouldAdopt,
+               "En cas de travail cumule egal, la chaine au tip hash lexicographiquement plus petit doit gagner.");
+}
+
+void testIdenticalChainIsNotCountedAsReorg() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 4};
+    chain.minePendingTransactions("miner");
+
+    const std::vector<Block> sameChain = chain.getChain();
+    const bool adopted = chain.tryAdoptChain(sameChain);
+    assertTrue(!adopted, "Reproposer la meme chaine ne doit pas etre considere comme une adoption.");
+    assertTrue(chain.getReorgCount() == 0, "Une chaine identique ne doit pas incrementer les metriques de reorg.");
+}
+
 void testRejectChainFromDifferentGenesis() {
     Blockchain chain{1, Transaction::fromNOVA(25.0), 4};
     chain.minePendingTransactions("miner");
@@ -725,6 +762,8 @@ int main() {
         testRecentBlockSummariesAreOrderedFromTip();
         testFindTransactionByIdForConfirmedTransaction();
         testFindTransactionByIdForPendingAndUnknownTransaction();
+        testEqualWorkChainUsesDeterministicTieBreak();
+        testIdenticalChainIsNotCountedAsReorg();
         testExpiredMempoolTransactionsArePruned();
         testAmountConversionRoundTrip();
         testDifficultyRetargetIncreasesWhenBlocksTooFast();
