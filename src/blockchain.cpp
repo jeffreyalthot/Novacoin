@@ -913,6 +913,61 @@ std::optional<std::size_t> Blockchain::findBlockHeightByHash(const std::string& 
     return std::nullopt;
 }
 
+BlockSummary Blockchain::makeBlockSummary(const Block& block) const {
+    BlockSummary summary;
+    summary.index = block.getIndex();
+    summary.hash = block.getHash();
+    summary.previousHash = block.getPreviousHash();
+    summary.timestamp = block.getTimestamp();
+    summary.difficulty = block.getDifficulty();
+    summary.transactionCount = block.getTransactions().size();
+
+    for (const auto& tx : block.getTransactions()) {
+        if (tx.from != "network") {
+            ++summary.userTransactionCount;
+            if (!safeAdd(summary.totalFees, tx.fee, summary.totalFees)) {
+                throw std::overflow_error("Overflow block summary fees.");
+            }
+        }
+    }
+
+    return summary;
+}
+
+std::optional<BlockSummary> Blockchain::getBlockSummaryByHeight(std::size_t height) const {
+    if (height >= chain_.size()) {
+        return std::nullopt;
+    }
+
+    return makeBlockSummary(chain_[height]);
+}
+
+std::optional<BlockSummary> Blockchain::getBlockSummaryByHash(const std::string& hash) const {
+    const auto height = findBlockHeightByHash(hash);
+    if (!height.has_value()) {
+        return std::nullopt;
+    }
+
+    return makeBlockSummary(chain_[height.value()]);
+}
+
+std::vector<BlockSummary> Blockchain::getRecentBlockSummaries(std::size_t maxCount) const {
+    if (maxCount == 0 || chain_.empty()) {
+        return {};
+    }
+
+    const std::size_t count = std::min(maxCount, chain_.size());
+    std::vector<BlockSummary> summaries;
+    summaries.reserve(count);
+
+    for (std::size_t i = 0; i < count; ++i) {
+        const std::size_t height = chain_.size() - 1 - i;
+        summaries.push_back(makeBlockSummary(chain_[height]));
+    }
+
+    return summaries;
+}
+
 std::vector<BlockHeaderInfo> Blockchain::getHeadersForLocator(const std::vector<std::string>& locatorHashes,
                                                                  std::size_t maxCount) const {
     return getHeadersForLocatorWithStop(locatorHashes, maxCount, "");

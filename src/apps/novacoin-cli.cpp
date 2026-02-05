@@ -5,6 +5,7 @@
 #include <exception>
 #include <iomanip>
 #include <iostream>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -27,7 +28,9 @@ void printUsage() {
               << "  novacoin-cli headers <start_height> <max_count>\n"
               << "  novacoin-cli locator\n"
               << "  novacoin-cli headers-sync <max_count> [locator_hash ...]\n"
-              << "  novacoin-cli headers-sync-stop <max_count> <stop_hash> [locator_hash ...]\n";
+              << "  novacoin-cli headers-sync-stop <max_count> <stop_hash> [locator_hash ...]\n"
+              << "  novacoin-cli block <height|hash>\n"
+              << "  novacoin-cli blocks <max_count>\n";
 }
 
 double parseDouble(const std::string& raw, const std::string& field) {
@@ -211,6 +214,52 @@ int main(int argc, char* argv[]) {
             std::cout << "locator_size=" << locator.size() << "\n";
             for (std::size_t i = 0; i < locator.size(); ++i) {
                 std::cout << "  [" << i << "] " << locator[i] << "\n";
+            }
+            return 0;
+        }
+
+        if (command == "block") {
+            if (argc != 3) {
+                printUsage();
+                return 1;
+            }
+
+            std::optional<BlockSummary> summary;
+            try {
+                const std::size_t height = static_cast<std::size_t>(std::stoull(argv[2]));
+                summary = chain.getBlockSummaryByHeight(height);
+            } catch (const std::exception&) {
+                summary = chain.getBlockSummaryByHash(argv[2]);
+            }
+
+            if (!summary.has_value()) {
+                std::cout << "block_not_found\n";
+                return 0;
+            }
+
+            std::cout << "block h=" << summary->index << " diff=" << summary->difficulty
+                      << " ts=" << summary->timestamp << " txs=" << summary->transactionCount
+                      << " user_txs=" << summary->userTransactionCount << " fees=" << std::fixed
+                      << std::setprecision(8) << Transaction::toNOVA(summary->totalFees) << " NOVA"
+                      << " hash=" << summary->hash << " prev=" << summary->previousHash << "\n";
+            return 0;
+        }
+
+        if (command == "blocks") {
+            if (argc != 3) {
+                printUsage();
+                return 1;
+            }
+
+            const std::size_t maxCount = static_cast<std::size_t>(std::stoull(argv[2]));
+            const auto summaries = chain.getRecentBlockSummaries(maxCount);
+            std::cout << "blocks=" << summaries.size() << "\n";
+            for (const auto& summary : summaries) {
+                std::cout << "  h=" << summary.index << " diff=" << summary.difficulty << " ts="
+                          << summary.timestamp << " txs=" << summary.transactionCount << " user_txs="
+                          << summary.userTransactionCount << " fees=" << std::fixed << std::setprecision(8)
+                          << Transaction::toNOVA(summary.totalFees) << " NOVA"
+                          << " hash=" << summary.hash << " prev=" << summary.previousHash << "\n";
             }
             return 0;
         }

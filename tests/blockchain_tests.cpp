@@ -603,6 +603,49 @@ void testRejectChainContainingDuplicateUserTransactionIds() {
     assertTrue(!adopted, "Une chaine contenant deux fois le meme txid utilisateur doit etre rejetee.");
 }
 
+
+
+void testBlockSummaryLookupByHeightAndHash() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 5};
+    chain.minePendingTransactions("miner");
+    chain.createTransaction(
+        Transaction{"miner", "alice", Transaction::fromNOVA(1.0), nowSeconds(), Transaction::fromNOVA(0.2)});
+    chain.minePendingTransactions("miner");
+
+    const auto byHeight = chain.getBlockSummaryByHeight(2);
+    assertTrue(byHeight.has_value(), "Le resume de bloc doit etre resolvable par hauteur.");
+    assertTrue(byHeight->index == 2, "Le resume de bloc doit exposer la bonne hauteur.");
+    assertTrue(byHeight->transactionCount == 2, "Le bloc mine doit contenir tx utilisateur + coinbase.");
+    assertTrue(byHeight->userTransactionCount == 1, "Le nombre de transactions utilisateur doit etre exact.");
+    assertAmountEq(byHeight->totalFees, Transaction::fromNOVA(0.2), "Les frais du bloc doivent etre agregees.");
+
+    const auto byHash = chain.getBlockSummaryByHash(byHeight->hash);
+    assertTrue(byHash.has_value(), "Le resume de bloc doit etre resolvable par hash.");
+    assertTrue(byHash->hash == byHeight->hash && byHash->index == byHeight->index,
+               "Les resolutions par hash et hauteur doivent pointer le meme bloc.");
+
+    assertTrue(!chain.getBlockSummaryByHeight(42).has_value(), "Une hauteur inconnue ne doit pas retourner de bloc.");
+    assertTrue(!chain.getBlockSummaryByHash("unknown-hash").has_value(), "Un hash inconnu ne doit pas matcher.");
+}
+
+void testRecentBlockSummariesAreOrderedFromTip() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 5};
+    chain.minePendingTransactions("miner");
+    chain.minePendingTransactions("miner");
+    chain.minePendingTransactions("miner");
+
+    const auto summaries = chain.getRecentBlockSummaries(3);
+    assertTrue(summaries.size() == 3, "Le nombre de resumes doit respecter la limite demandee.");
+    assertTrue(summaries[0].index == chain.getBlockCount() - 1,
+               "Le premier resume doit correspondre au tip de chaine.");
+    assertTrue(summaries[1].index + 1 == summaries[0].index && summaries[2].index + 1 == summaries[1].index,
+               "Les resumes doivent etre ordonnes du plus recent au plus ancien.");
+
+    const auto allSummaries = chain.getRecentBlockSummaries(99);
+    assertTrue(allSummaries.size() == chain.getBlockCount(),
+               "Demander plus que la chaine doit retourner toute la chaine.");
+    assertTrue(chain.getRecentBlockSummaries(0).empty(), "Une limite nulle doit retourner une liste vide.");
+}
 void testRejectChainFromDifferentGenesis() {
     Blockchain chain{1, Transaction::fromNOVA(25.0), 4};
     chain.minePendingTransactions("miner");
@@ -643,6 +686,8 @@ int main() {
         testHeadersForLocatorReturnsNextSegment();
         testHeadersForLocatorWithStopHashBoundsResponse();
         testHeadersForLocatorWithUnknownStopHashFallsBackToMaxCount();
+        testBlockSummaryLookupByHeightAndHash();
+        testRecentBlockSummariesAreOrderedFromTip();
         testExpiredMempoolTransactionsArePruned();
         testAmountConversionRoundTrip();
         testDifficultyRetargetIncreasesWhenBlocksTooFast();
