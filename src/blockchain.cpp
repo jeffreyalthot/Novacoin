@@ -7,6 +7,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace {
 std::uint64_t nowSeconds() {
@@ -442,6 +443,70 @@ bool Blockchain::isChainValid(const std::vector<Block>& candidateChain) const {
     return true;
 }
 
+std::unordered_set<std::string> Blockchain::buildUserTransactionIdSet(const std::vector<Block>& source) const {
+    std::unordered_set<std::string> ids;
+    for (const auto& block : source) {
+        for (const auto& tx : block.getTransactions()) {
+            if (tx.from != "network") {
+                ids.insert(tx.id());
+            }
+        }
+    }
+    return ids;
+}
+
+std::vector<Transaction> Blockchain::collectDetachedTransactions(const std::vector<Block>& oldChain,
+                                                                 const std::vector<Block>& newChain) const {
+    const auto newChainIds = buildUserTransactionIdSet(newChain);
+    std::vector<Transaction> detached;
+
+    for (const auto& block : oldChain) {
+        for (const auto& tx : block.getTransactions()) {
+            if (tx.from == "network") {
+                continue;
+            }
+
+            if (newChainIds.find(tx.id()) == newChainIds.end()) {
+                detached.push_back(tx);
+            }
+        }
+    }
+
+    return detached;
+}
+
+void Blockchain::rebuildPendingTransactionsAfterReorg(const std::vector<Block>& oldChain,
+                                                      const std::vector<Block>& newChain) {
+    std::vector<Transaction> rebuilt;
+    rebuilt.reserve(pendingTransactions_.size() + oldChain.size());
+
+    const auto newChainIds = buildUserTransactionIdSet(newChain);
+
+    auto appendIfValid = [this, &rebuilt, &newChainIds](const Transaction& tx) {
+        if (tx.from == "network" || !isTransactionShapeValid(tx) || tx.fee < kMinRelayFee ||
+            !isTimestampAcceptable(tx.timestamp) || newChainIds.find(tx.id()) != newChainIds.end()) {
+            return;
+        }
+
+        const bool duplicate = std::any_of(rebuilt.begin(), rebuilt.end(), [&tx](const Transaction& existing) {
+            return existing.id() == tx.id();
+        });
+        if (!duplicate) {
+            rebuilt.push_back(tx);
+        }
+    };
+
+    for (const auto& tx : pendingTransactions_) {
+        appendIfValid(tx);
+    }
+
+    for (const auto& tx : collectDetachedTransactions(oldChain, newChain)) {
+        appendIfValid(tx);
+    }
+
+    pendingTransactions_ = std::move(rebuilt);
+}
+
 bool Blockchain::tryAdoptChain(const std::vector<Block>& candidateChain) {
     if (!isChainValid(candidateChain)) {
         return false;
@@ -453,18 +518,9 @@ bool Blockchain::tryAdoptChain(const std::vector<Block>& candidateChain) {
         return false;
     }
 
+    const std::vector<Block> previousChain = chain_;
     chain_ = candidateChain;
-    pendingTransactions_.erase(
-        std::remove_if(pendingTransactions_.begin(), pendingTransactions_.end(), [this](const Transaction& tx) {
-            return std::any_of(chain_.begin(), chain_.end(), [&tx](const Block& block) {
-                return std::any_of(block.getTransactions().begin(),
-                                   block.getTransactions().end(),
-                                   [&tx](const Transaction& onChainTx) {
-                                       return onChainTx.from != "network" && onChainTx.id() == tx.id();
-                                   });
-            });
-        }),
-        pendingTransactions_.end());
+    rebuildPendingTransactionsAfterReorg(previousChain, chain_);
 
     return true;
 }

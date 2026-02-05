@@ -5,6 +5,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <unordered_set>
 #include <string>
 #include <vector>
 
@@ -49,6 +50,11 @@ private:
                                                           const std::vector<Block>& referenceChain) const;
     [[nodiscard]] bool isChainValid(const std::vector<Block>& candidateChain) const;
     [[nodiscard]] std::uint64_t computeCumulativeWork(const std::vector<Block>& chain) const;
+    [[nodiscard]] std::unordered_set<std::string> buildUserTransactionIdSet(const std::vector<Block>& source) const;
+    [[nodiscard]] std::vector<Transaction> collectDetachedTransactions(const std::vector<Block>& oldChain,
+                                                                       const std::vector<Block>& newChain) const;
+    void rebuildPendingTransactionsAfterReorg(const std::vector<Block>& oldChain,
+                                              const std::vector<Block>& newChain);
 
     unsigned int initialDifficulty_;
     Amount miningReward_;

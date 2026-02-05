@@ -150,6 +150,12 @@ void testAdoptChainWithMoreCumulativeWork() {
                                Transaction{"network", "alt-miner", Transaction::fromNOVA(25.0), nowSeconds(), 0}},
                            1);
     candidate.back().mine();
+    candidate.emplace_back(static_cast<std::uint64_t>(candidate.size()),
+                           candidate.back().getHash(),
+                           std::vector<Transaction>{
+                               Transaction{"network", "alt-miner", Transaction::fromNOVA(25.0), nowSeconds(), 0}},
+                           1);
+    candidate.back().mine();
 
     const bool adopted = chain.tryAdoptChain(candidate);
     assertTrue(adopted, "Une chaine valide avec plus de travail cumule doit etre adoptee.");
@@ -169,6 +175,71 @@ void testRejectChainWithoutMoreWork() {
     assertTrue(!adopted, "Une chaine avec moins de travail cumule ne doit pas etre adoptee.");
 }
 
+
+void testReorgReinjectsDetachedTransactionsIntoMempool() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 4};
+    chain.minePendingTransactions("miner");
+
+    const Transaction txA{"miner", "alice", Transaction::fromNOVA(1.0), nowSeconds(), Transaction::fromNOVA(0.3)};
+    const Transaction txB{"miner", "bob", Transaction::fromNOVA(1.0), nowSeconds(), Transaction::fromNOVA(0.2)};
+
+    chain.createTransaction(txA);
+    chain.createTransaction(txB);
+    const std::vector<Block> baseChainBeforeTxBlock = chain.getChain();
+    chain.minePendingTransactions("miner");
+
+    std::vector<Block> candidate = baseChainBeforeTxBlock;
+    candidate.emplace_back(static_cast<std::uint64_t>(candidate.size()),
+                           candidate.back().getHash(),
+                           std::vector<Transaction>{
+                               Transaction{"network", "alt-miner", Transaction::fromNOVA(25.0), nowSeconds(), 0}},
+                           1);
+    candidate.back().mine();
+    candidate.emplace_back(static_cast<std::uint64_t>(candidate.size()),
+                           candidate.back().getHash(),
+                           std::vector<Transaction>{
+                               Transaction{"network", "alt-miner", Transaction::fromNOVA(25.0), nowSeconds(), 0}},
+                           1);
+    candidate.back().mine();
+
+    const bool adopted = chain.tryAdoptChain(candidate);
+    assertTrue(adopted, "La reorg vers une chaine avec plus de travail doit etre acceptee.");
+    assertTrue(chain.getPendingTransactions().size() == 2,
+               "Les transactions detachees de l'ancienne branche doivent revenir en mempool.");
+}
+
+void testReorgMempoolRemovesTransactionsAlreadyOnNewChain() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 4};
+    chain.minePendingTransactions("miner");
+
+    const Transaction txA{"miner", "alice", Transaction::fromNOVA(1.0), nowSeconds(), Transaction::fromNOVA(0.3)};
+    const Transaction txB{"miner", "bob", Transaction::fromNOVA(1.0), nowSeconds(), Transaction::fromNOVA(0.2)};
+
+    chain.createTransaction(txA);
+    chain.createTransaction(txB);
+
+    std::vector<Block> candidate = chain.getChain();
+    candidate.emplace_back(static_cast<std::uint64_t>(candidate.size()),
+                           candidate.back().getHash(),
+                           std::vector<Transaction>{
+                               txA,
+                               Transaction{"network", "alt-miner", Transaction::fromNOVA(25.0), nowSeconds(), 0}},
+                           1);
+    candidate.back().mine();
+    candidate.emplace_back(static_cast<std::uint64_t>(candidate.size()),
+                           candidate.back().getHash(),
+                           std::vector<Transaction>{
+                               Transaction{"network", "alt-miner", Transaction::fromNOVA(25.0), nowSeconds(), 0}},
+                           1);
+    candidate.back().mine();
+
+    const bool adopted = chain.tryAdoptChain(candidate);
+    assertTrue(adopted, "Une chaine alternative valide doit etre adoptee.");
+    assertTrue(chain.getPendingTransactions().size() == 1,
+               "Une transaction deja incluse dans la nouvelle chaine doit quitter la mempool.");
+    assertTrue(chain.getPendingTransactions().front().id() == txB.id(),
+               "Seule la transaction non incluse sur la nouvelle branche doit rester en mempool.");
+}
 void testAmountConversionRoundTrip() {
     const Amount sats = Transaction::fromNOVA(12.3456789);
     assertAmountEq(sats, 1'234'567'890, "La conversion NOVA -> satoshis doit etre exacte a 8 decimales.");
@@ -204,6 +275,8 @@ int main() {
         testTemplatePrioritizesHigherFees();
         testAdoptChainWithMoreCumulativeWork();
         testRejectChainWithoutMoreWork();
+        testReorgReinjectsDetachedTransactionsIntoMempool();
+        testReorgMempoolRemovesTransactionsAlreadyOnNewChain();
         testAmountConversionRoundTrip();
         testDifficultyRetargetIncreasesWhenBlocksTooFast();
         std::cout << "Tous les tests Novacoin sont passes.\n";
