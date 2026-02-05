@@ -284,3 +284,23 @@ cmake --build build
 - Ajouter un jeu de tests monétaires (émission cumulée, halving, plafond).
 - Mettre en place les premiers tests d'intégration multi-blocs.
 - Documenter les paramètres de genesis (timestamp, difficulté initiale, message genesis).
+
+---
+
+## Travaux réalisés dans cette itération
+
+- Intégration d'un **hard cap effectif** (`29_000_000.00000000 NOVA`) appliqué pendant la création de transactions `network`, le minage et la validation complète de chaîne.
+- Ajout d'une **récompense de bloc décroissante** (halving simplifié) pour amorcer la politique monétaire long terme.
+- Passage du minage à une coinbase incluse directement dans le bloc miné (récompense + frais), avec plafond strict.
+- Mise en place de **tests automatisés C++** (hard cap, rejet de mint illégal, récompenses avec frais).
+- Mise à jour du build CMake pour séparer `novacoin_core`, exécutable principal et exécutable de tests.
+
+## Travaux supplémentaires à effectuer la prochaine fois
+
+1. **Geler les paramètres monétaires v1** dans un fichier de config consensus (halving interval, récompense initiale, précision satoshi NOVA).
+2. **Remplacer les montants `double` par des unités entières** (satoshi NOVA) pour éliminer les risques d'arrondi.
+3. **Introduire une vraie transaction coinbase** avec format dédié et règles explicites par hauteur.
+4. **Ajouter une suite de tests de simulation longue** (plusieurs centaines de milliers de blocs) pour prouver l'extinction des récompenses.
+5. **Créer un module de sérialisation canonique** (versionnage, hash stable inter-plateformes) en préparation du réseau P2P.
+6. **Structurer un dossier `docs/`** avec spécification protocolaire v1 et runbook d'exploitation.
+7. **Débuter l'API CLI** (`status`, `mine`, `send`, `getblock`) pour piloter le nœud sans modifier le code.

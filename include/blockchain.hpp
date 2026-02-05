@@ -8,6 +8,9 @@
 
 class Blockchain {
 public:
+    static constexpr double kMaxSupply = 29'000'000.0;
+    static constexpr std::size_t kHalvingInterval = 100;
+
     explicit Blockchain(unsigned int difficulty = 4,
                         double miningReward = 12.5,
                         std::size_t maxTransactionsPerBlock = 100);
@@ -26,6 +29,8 @@ public:
     [[nodiscard]] const std::vector<Transaction>& getPendingTransactions() const;
 
 private:
+    [[nodiscard]] double blockSubsidyAtHeight(std::size_t height) const;
+
     unsigned int difficulty_;
     double miningReward_;
     std::size_t maxTransactionsPerBlock_;

@@ -25,10 +25,11 @@ int main() {
     try {
         Blockchain novacoin{4, 25.0, 2};
 
-        novacoin.createTransaction(Transaction{"network", "alice", 20.0, nowSeconds(), 0.0});
+        novacoin.minePendingTransactions("miner1");
+        novacoin.createTransaction(Transaction{"miner1", "alice", 10.0, nowSeconds(), 0.15});
         novacoin.minePendingTransactions("miner1");
 
-        novacoin.createTransaction(Transaction{"alice", "bob", 10.0, nowSeconds(), 0.15});
+        novacoin.createTransaction(Transaction{"alice", "bob", 6.0, nowSeconds(), 0.05});
         novacoin.createTransaction(Transaction{"bob", "charlie", 3.5, nowSeconds(), 0.05});
 
         std::cout << "Récompense estimée du prochain bloc: " << novacoin.estimateNextMiningReward() << "\n";

@@ -5,17 +5,24 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_executable(novacoin
-    src/main.cpp
+add_library(novacoin_core
     src/block.cpp
     src/blockchain.cpp
     src/transaction.cpp
 )
 
-target_include_directories(novacoin PRIVATE include)
+target_include_directories(novacoin_core PUBLIC include)
+
+add_executable(novacoin src/main.cpp)
+target_link_libraries(novacoin PRIVATE novacoin_core)
 
 if (MSVC)
-    target_compile_options(novacoin PRIVATE /W4)
+    target_compile_options(novacoin_core PRIVATE /W4)
 else()
-    target_compile_options(novacoin PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(novacoin_core PRIVATE -Wall -Wextra -Wpedantic)
 endif()
+
+enable_testing()
+add_executable(novacoin_tests tests/blockchain_tests.cpp)
+target_link_libraries(novacoin_tests PRIVATE novacoin_core)
+add_test(NAME novacoin_tests COMMAND novacoin_tests)
