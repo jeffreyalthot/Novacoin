@@ -23,6 +23,7 @@ void printUsage() {
               << "  novacoin-cli balance <address>\n"
               << "  novacoin-cli summary\n"
               << "  novacoin-cli address-stats <address>\n"
+              << "  novacoin-cli network-stats\n"
               << "  novacoin-cli mempool-stats\n"
               << "  novacoin-cli fee-estimate <target_blocks>\n"
               << "  novacoin-cli top <limit>\n"
@@ -137,6 +138,27 @@ int main(int argc, char* argv[]) {
                       << "  outgoing_tx=" << stats.outgoingTransactionCount << "\n"
                       << "  incoming_tx=" << stats.incomingTransactionCount << "\n"
                       << "  mined_blocks=" << stats.minedBlockCount << "\n";
+            return 0;
+        }
+
+        if (command == "network-stats") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+
+            const auto stats = chain.getNetworkStats();
+            std::cout << "Network stats\n"
+                      << "  block_count=" << stats.blockCount << "\n"
+                      << "  user_tx_count=" << stats.userTransactionCount << "\n"
+                      << "  coinbase_tx_count=" << stats.coinbaseTransactionCount << "\n"
+                      << "  pending_tx_count=" << stats.pendingTransactionCount << "\n"
+                      << "  total_transferred=" << std::fixed << std::setprecision(8)
+                      << Transaction::toNOVA(stats.totalTransferred) << " NOVA\n"
+                      << "  total_fees_paid=" << Transaction::toNOVA(stats.totalFeesPaid) << " NOVA\n"
+                      << "  total_mined_rewards=" << Transaction::toNOVA(stats.totalMinedRewards) << " NOVA\n"
+                      << "  median_user_tx_amount=" << Transaction::toNOVA(stats.medianUserTransactionAmount)
+                      << " NOVA\n";
             return 0;
         }
 
