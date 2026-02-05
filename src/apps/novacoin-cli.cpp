@@ -26,7 +26,8 @@ void printUsage() {
               << "  novacoin-cli top <limit>\n"
               << "  novacoin-cli headers <start_height> <max_count>\n"
               << "  novacoin-cli locator\n"
-              << "  novacoin-cli headers-sync <max_count> [locator_hash ...]\n";
+              << "  novacoin-cli headers-sync <max_count> [locator_hash ...]\n"
+              << "  novacoin-cli headers-sync-stop <max_count> <stop_hash> [locator_hash ...]\n";
 }
 
 double parseDouble(const std::string& raw, const std::string& field) {
@@ -170,6 +171,29 @@ int main(int argc, char* argv[]) {
 
             const auto headers = chain.getHeadersForLocator(locatorHashes, maxCount);
             std::cout << "headers_sync=" << headers.size() << "\n";
+            for (const auto& header : headers) {
+                std::cout << "  h=" << header.index << " diff=" << header.difficulty << " ts=" << header.timestamp
+                          << " hash=" << header.hash << " prev=" << header.previousHash << "\n";
+            }
+            return 0;
+        }
+
+        if (command == "headers-sync-stop") {
+            if (argc < 4) {
+                printUsage();
+                return 1;
+            }
+
+            const std::size_t maxCount = static_cast<std::size_t>(std::stoull(argv[2]));
+            const std::string stopHash = argv[3];
+            std::vector<std::string> locatorHashes;
+            locatorHashes.reserve(static_cast<std::size_t>(argc > 4 ? argc - 4 : 0));
+            for (int i = 4; i < argc; ++i) {
+                locatorHashes.emplace_back(argv[i]);
+            }
+
+            const auto headers = chain.getHeadersForLocatorWithStop(locatorHashes, maxCount, stopHash);
+            std::cout << "headers_sync_stop=" << headers.size() << "\n";
             for (const auto& header : headers) {
                 std::cout << "  h=" << header.index << " diff=" << header.difficulty << " ts=" << header.timestamp
                           << " hash=" << header.hash << " prev=" << header.previousHash << "\n";

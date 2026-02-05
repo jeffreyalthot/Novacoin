@@ -96,6 +96,10 @@ public:
         const std::vector<std::string>& locatorHashes) const;
     [[nodiscard]] std::vector<BlockHeaderInfo> getHeadersForLocator(const std::vector<std::string>& locatorHashes,
                                                                      std::size_t maxCount) const;
+    [[nodiscard]] std::vector<BlockHeaderInfo> getHeadersForLocatorWithStop(
+        const std::vector<std::string>& locatorHashes,
+        std::size_t maxCount,
+        const std::string& stopHash) const;
     [[nodiscard]] bool tryAdoptChain(const std::vector<Block>& candidateChain);
     [[nodiscard]] const std::vector<Block>& getChain() const;
     [[nodiscard]] const std::vector<Transaction>& getPendingTransactions() const;
@@ -116,6 +120,7 @@ private:
                                               const std::vector<Block>& newChain);
     [[nodiscard]] std::size_t commonPrefixLength(const std::vector<Block>& lhs,
                                                  const std::vector<Block>& rhs) const;
+    [[nodiscard]] std::optional<std::size_t> findBlockHeightByHash(const std::string& hash) const;
 
     unsigned int initialDifficulty_;
     Amount miningReward_;
