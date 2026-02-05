@@ -384,6 +384,26 @@ void testNetworkStatsExposeChainActivity() {
                    "Le total de frais reseau doit etre la somme des frais confirmes.");
 }
 
+void testMempoolStatsExposePendingFeeDistribution() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 5};
+    chain.minePendingTransactions("miner");
+
+    chain.createTransaction(
+        Transaction{"miner", "alice", Transaction::fromNOVA(1.0), nowSeconds(), Transaction::fromNOVA(0.1)});
+    chain.createTransaction(
+        Transaction{"miner", "bob", Transaction::fromNOVA(2.0), nowSeconds(), Transaction::fromNOVA(0.3)});
+    chain.createTransaction(
+        Transaction{"miner", "charlie", Transaction::fromNOVA(3.0), nowSeconds(), Transaction::fromNOVA(0.2)});
+
+    const auto mempool = chain.getMempoolStats();
+    assertTrue(mempool.transactionCount == 3, "Le nombre de transactions mempool doit etre exact.");
+    assertAmountEq(mempool.totalAmount, Transaction::fromNOVA(6.0), "Le total montant mempool doit etre agrege.");
+    assertAmountEq(mempool.totalFees, Transaction::fromNOVA(0.6), "Le total de frais mempool doit etre agrege.");
+    assertAmountEq(mempool.minFee, Transaction::fromNOVA(0.1), "Le min fee mempool doit etre expose.");
+    assertAmountEq(mempool.maxFee, Transaction::fromNOVA(0.3), "Le max fee mempool doit etre expose.");
+    assertAmountEq(mempool.medianFee, Transaction::fromNOVA(0.2), "La mediane de fee mempool doit etre correcte.");
+}
+
 
 void testHeadersFromHeightAndLocatorHelpers() {
     Blockchain chain{1, Transaction::fromNOVA(25.0), 4};
@@ -588,6 +608,7 @@ int main() {
         testReorgMetricsTrackDepthAndForkHeight();
         testAddressStatsAndTopBalances();
         testNetworkStatsExposeChainActivity();
+        testMempoolStatsExposePendingFeeDistribution();
         testHeadersFromHeightAndLocatorHelpers();
         testHeadersForLocatorReturnsNextSegment();
         testExpiredMempoolTransactionsArePruned();

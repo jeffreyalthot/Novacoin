@@ -34,6 +34,15 @@ struct NetworkStats {
     Amount medianUserTransactionAmount = 0;
 };
 
+struct MempoolStats {
+    std::size_t transactionCount = 0;
+    Amount totalAmount = 0;
+    Amount totalFees = 0;
+    Amount minFee = 0;
+    Amount maxFee = 0;
+    Amount medianFee = 0;
+};
+
 struct BlockHeaderInfo {
     std::uint64_t index = 0;
     std::string hash;
@@ -78,6 +87,7 @@ public:
     [[nodiscard]] std::vector<Transaction> getPendingTransactionsForBlockTemplate() const;
     [[nodiscard]] AddressStats getAddressStats(const std::string& address) const;
     [[nodiscard]] NetworkStats getNetworkStats() const;
+    [[nodiscard]] MempoolStats getMempoolStats() const;
     [[nodiscard]] std::vector<std::pair<std::string, Amount>> getTopBalances(std::size_t limit) const;
     [[nodiscard]] std::vector<BlockHeaderInfo> getHeadersFromHeight(std::size_t startHeight,
                                                                     std::size_t maxCount) const;

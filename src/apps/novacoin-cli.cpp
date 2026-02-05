@@ -22,6 +22,7 @@ void printUsage() {
               << "  novacoin-cli balance <address>\n"
               << "  novacoin-cli summary\n"
               << "  novacoin-cli address-stats <address>\n"
+              << "  novacoin-cli mempool-stats\n"
               << "  novacoin-cli top <limit>\n"
               << "  novacoin-cli headers <start_height> <max_count>\n"
               << "  novacoin-cli locator\n"
@@ -119,6 +120,23 @@ int main(int argc, char* argv[]) {
             return 0;
         }
 
+        if (command == "mempool-stats") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+
+            const auto stats = chain.getMempoolStats();
+            std::cout << "Mempool stats\n"
+                      << "  tx_count=" << stats.transactionCount << "\n"
+                      << "  total_amount=" << std::fixed << std::setprecision(8)
+                      << Transaction::toNOVA(stats.totalAmount) << " NOVA\n"
+                      << "  total_fees=" << Transaction::toNOVA(stats.totalFees) << " NOVA\n"
+                      << "  min_fee=" << Transaction::toNOVA(stats.minFee) << " NOVA\n"
+                      << "  max_fee=" << Transaction::toNOVA(stats.maxFee) << " NOVA\n"
+                      << "  median_fee=" << Transaction::toNOVA(stats.medianFee) << " NOVA\n";
+            return 0;
+        }
 
         if (command == "headers") {
             if (argc != 4) {
