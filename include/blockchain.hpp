@@ -5,6 +5,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -31,6 +32,14 @@ struct NetworkStats {
     Amount totalFeesPaid = 0;
     Amount totalMinedRewards = 0;
     Amount medianUserTransactionAmount = 0;
+};
+
+struct BlockHeaderInfo {
+    std::uint64_t index = 0;
+    std::string hash;
+    std::string previousHash;
+    std::uint64_t timestamp = 0;
+    unsigned int difficulty = 0;
 };
 
 class Blockchain {
@@ -69,6 +78,11 @@ public:
     [[nodiscard]] AddressStats getAddressStats(const std::string& address) const;
     [[nodiscard]] NetworkStats getNetworkStats() const;
     [[nodiscard]] std::vector<std::pair<std::string, Amount>> getTopBalances(std::size_t limit) const;
+    [[nodiscard]] std::vector<BlockHeaderInfo> getHeadersFromHeight(std::size_t startHeight,
+                                                                    std::size_t maxCount) const;
+    [[nodiscard]] std::vector<std::string> getBlockLocatorHashes() const;
+    [[nodiscard]] std::optional<std::size_t> findHighestLocatorMatch(
+        const std::vector<std::string>& locatorHashes) const;
     [[nodiscard]] bool tryAdoptChain(const std::vector<Block>& candidateChain);
     [[nodiscard]] const std::vector<Block>& getChain() const;
     [[nodiscard]] const std::vector<Transaction>& getPendingTransactions() const;

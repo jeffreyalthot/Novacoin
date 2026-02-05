@@ -21,7 +21,9 @@ void printUsage() {
               << "  novacoin-cli balance <address>\n"
               << "  novacoin-cli summary\n"
               << "  novacoin-cli address-stats <address>\n"
-              << "  novacoin-cli top <limit>\n";
+              << "  novacoin-cli top <limit>\n"
+              << "  novacoin-cli headers <start_height> <max_count>\n"
+              << "  novacoin-cli locator\n";
 }
 
 double parseDouble(const std::string& raw, const std::string& field) {
@@ -112,6 +114,38 @@ int main(int argc, char* argv[]) {
                       << "  outgoing_tx=" << stats.outgoingTransactionCount << "\n"
                       << "  incoming_tx=" << stats.incomingTransactionCount << "\n"
                       << "  mined_blocks=" << stats.minedBlockCount << "\n";
+            return 0;
+        }
+
+
+        if (command == "headers") {
+            if (argc != 4) {
+                printUsage();
+                return 1;
+            }
+
+            const std::size_t startHeight = static_cast<std::size_t>(std::stoull(argv[2]));
+            const std::size_t maxCount = static_cast<std::size_t>(std::stoull(argv[3]));
+            const auto headers = chain.getHeadersFromHeight(startHeight, maxCount);
+            std::cout << "headers=" << headers.size() << "\n";
+            for (const auto& header : headers) {
+                std::cout << "  h=" << header.index << " diff=" << header.difficulty << " ts=" << header.timestamp
+                          << " hash=" << header.hash << " prev=" << header.previousHash << "\n";
+            }
+            return 0;
+        }
+
+        if (command == "locator") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+
+            const auto locator = chain.getBlockLocatorHashes();
+            std::cout << "locator_size=" << locator.size() << "\n";
+            for (std::size_t i = 0; i < locator.size(); ++i) {
+                std::cout << "  [" << i << "] " << locator[i] << "\n";
+            }
             return 0;
         }
 

@@ -383,6 +383,34 @@ void testNetworkStatsExposeChainActivity() {
                    "Le total de frais reseau doit etre la somme des frais confirmes.");
 }
 
+
+void testHeadersFromHeightAndLocatorHelpers() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 4};
+    chain.minePendingTransactions("miner");
+    chain.minePendingTransactions("miner");
+    chain.minePendingTransactions("miner");
+
+    const auto headers = chain.getHeadersFromHeight(1, 2);
+    assertTrue(headers.size() == 2, "La recuperation headers doit respecter start+maxCount.");
+    assertTrue(headers[0].index == 1 && headers[1].index == 2,
+               "Les headers renvoyes doivent etre ordonnes par hauteur.");
+    assertTrue(headers[1].previousHash == headers[0].hash,
+               "Chaque header doit pointer vers le hash precedent.");
+
+    const auto locator = chain.getBlockLocatorHashes();
+    assertTrue(!locator.empty(), "Le locator ne doit pas etre vide pour une chaine non vide.");
+    assertTrue(locator.front() == chain.getChain().back().getHash(),
+               "Le locator doit commencer par le tip de chaine.");
+
+    const auto match = chain.findHighestLocatorMatch(locator);
+    assertTrue(match.has_value(), "Un locator local doit matcher la chaine locale.");
+    assertTrue(match.value() == chain.getBlockCount() - 1,
+               "Le plus haut match d'un locator local doit etre le tip.");
+
+    const auto noMatch = chain.findHighestLocatorMatch({"deadbeef", "badcafe"});
+    assertTrue(!noMatch.has_value(), "Un locator sans hash connu ne doit pas retourner de match.");
+}
+
 void testAmountConversionRoundTrip() {
     const Amount sats = Transaction::fromNOVA(12.3456789);
     assertAmountEq(sats, 1'234'567'890, "La conversion NOVA -> satoshis doit etre exacte a 8 decimales.");
@@ -502,6 +530,7 @@ int main() {
         testReorgMetricsTrackDepthAndForkHeight();
         testAddressStatsAndTopBalances();
         testNetworkStatsExposeChainActivity();
+        testHeadersFromHeightAndLocatorHelpers();
         testAmountConversionRoundTrip();
         testDifficultyRetargetIncreasesWhenBlocksTooFast();
         testRejectChainWithCoinbaseNotInLastPosition();
