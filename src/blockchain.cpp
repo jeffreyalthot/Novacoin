@@ -164,6 +164,22 @@ void Blockchain::createTransaction(const Transaction& tx) {
         throw std::invalid_argument("Transaction en double detectee dans la mempool locale.");
     }
 
+    if (pendingTransactions_.size() >= kMaxMempoolTransactions) {
+        auto evictIt = std::min_element(
+            pendingTransactions_.begin(), pendingTransactions_.end(), [](const Transaction& lhs, const Transaction& rhs) {
+                if (lhs.fee != rhs.fee) {
+                    return lhs.fee < rhs.fee;
+                }
+                return lhs.timestamp < rhs.timestamp;
+            });
+
+        if (evictIt == pendingTransactions_.end() || tx.fee <= evictIt->fee) {
+            throw std::invalid_argument("Mempool pleine: frais trop faibles pour eviction.");
+        }
+
+        pendingTransactions_.erase(evictIt);
+    }
+
     pendingTransactions_.push_back(tx);
 }
 

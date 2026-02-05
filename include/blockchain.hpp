@@ -76,6 +76,7 @@ public:
     static constexpr std::uint64_t kMaxFutureDriftSeconds = consensus::kMaxFutureDriftSeconds;
     static constexpr std::uint64_t kTargetBlockTimeSeconds = consensus::kTargetBlockTimeSeconds;
     static constexpr std::uint64_t kMempoolExpirySeconds = consensus::kMempoolExpirySeconds;
+    static constexpr std::size_t kMaxMempoolTransactions = consensus::kMaxMempoolTransactions;
     static constexpr std::size_t kDifficultyAdjustmentInterval = consensus::kDifficultyAdjustmentInterval;
     static constexpr unsigned int kMinDifficulty = consensus::kMinDifficulty;
     static constexpr unsigned int kMaxDifficulty = consensus::kMaxDifficulty;

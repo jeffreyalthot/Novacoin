@@ -1,5 +1,6 @@
 #include "blockchain.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <iostream>
@@ -682,25 +683,70 @@ void testFindTransactionByIdForPendingAndUnknownTransaction() {
                "Un txid inconnu ne doit retourner aucun resultat.");
 }
 
+
+void testMempoolCapacityEvictsLowestFeeTransaction() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 2};
+    chain.minePendingTransactions("miner");
+
+    const std::uint64_t ts = nowSeconds();
+    for (std::size_t i = 0; i < Blockchain::kMaxMempoolTransactions; ++i) {
+        chain.createTransaction(Transaction{"miner",
+                                            "user" + std::to_string(i),
+                                            Transaction::fromNOVA(0.01),
+                                            ts + i,
+                                            Transaction::fromNOVA(0.0001)});
+    }
+
+    chain.createTransaction(Transaction{"miner", "vip", Transaction::fromNOVA(0.01), ts + 2000, Transaction::fromNOVA(0.001)});
+
+    assertTrue(chain.getPendingTransactions().size() == Blockchain::kMaxMempoolTransactions,
+               "La mempool doit rester bornee apres eviction.");
+
+    const bool lowFeeStillPresent = std::any_of(chain.getPendingTransactions().begin(),
+                                                chain.getPendingTransactions().end(),
+                                                [](const Transaction& tx) { return tx.to == "user0"; });
+    assertTrue(!lowFeeStillPresent, "La transaction la moins prioritaire doit etre evincee.");
+}
+
+void testMempoolCapacityRejectsTooLowFeeWhenFull() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 2};
+    chain.minePendingTransactions("miner");
+
+    const std::uint64_t ts = nowSeconds();
+    for (std::size_t i = 0; i < Blockchain::kMaxMempoolTransactions; ++i) {
+        chain.createTransaction(Transaction{"miner",
+                                            "addr" + std::to_string(i),
+                                            Transaction::fromNOVA(0.01),
+                                            ts + i,
+                                            Transaction::fromNOVA(0.0002)});
+    }
+
+    bool threw = false;
+    try {
+        chain.createTransaction(Transaction{"miner", "late", Transaction::fromNOVA(0.01), ts + 3000, Transaction::fromNOVA(0.0001)});
+    } catch (const std::invalid_argument&) {
+        threw = true;
+    }
+
+    assertTrue(threw, "Une transaction moins fee que le minimum mempool doit etre rejetee quand la mempool est pleine.");
+}
+
 void testEqualWorkChainUsesDeterministicTieBreak() {
     Blockchain chain{1, Transaction::fromNOVA(25.0), 4};
     chain.minePendingTransactions("miner");
 
-    std::vector<Block> candidate = chain.getChain();
+    const std::vector<Block> forkBase = chain.getChain();
+
+    chain.minePendingTransactions("miner");
+    const std::vector<Block> local = chain.getChain();
+
+    std::vector<Block> candidate = forkBase;
     candidate.emplace_back(static_cast<std::uint64_t>(candidate.size()),
                            candidate.back().getHash(),
                            std::vector<Transaction>{
                                Transaction{"network", "alt-miner", Transaction::fromNOVA(25.0), nowSeconds(), 0}},
                            1);
     candidate.back().mine();
-
-    std::vector<Block> local = chain.getChain();
-    local.emplace_back(static_cast<std::uint64_t>(local.size()),
-                       local.back().getHash(),
-                       std::vector<Transaction>{
-                           Transaction{"network", "miner", Transaction::fromNOVA(25.0), nowSeconds(), 0}},
-                       1);
-    local.back().mine();
 
     const bool adopted = chain.tryAdoptChain(candidate);
     const bool shouldAdopt = candidate.back().getHash() < local.back().getHash();
@@ -762,6 +808,8 @@ int main() {
         testRecentBlockSummariesAreOrderedFromTip();
         testFindTransactionByIdForConfirmedTransaction();
         testFindTransactionByIdForPendingAndUnknownTransaction();
+        testMempoolCapacityEvictsLowestFeeTransaction();
+        testMempoolCapacityRejectsTooLowFeeWhenFull();
         testEqualWorkChainUsesDeterministicTieBreak();
         testIdenticalChainIsNotCountedAsReorg();
         testExpiredMempoolTransactionsArePruned();
