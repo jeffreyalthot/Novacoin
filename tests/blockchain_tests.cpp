@@ -4,6 +4,7 @@
 #include <cmath>
 #include <iostream>
 #include <stdexcept>
+#include <thread>
 
 namespace {
 std::uint64_t nowSeconds() {
@@ -532,6 +533,19 @@ void testRejectChainContainingDuplicateUserTransactionIds() {
     assertTrue(!adopted, "Une chaine contenant deux fois le meme txid utilisateur doit etre rejetee.");
 }
 
+void testRejectChainFromDifferentGenesis() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 4};
+    chain.minePendingTransactions("miner");
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    Blockchain other{1, Transaction::fromNOVA(25.0), 4};
+    other.minePendingTransactions("alt-miner");
+    other.minePendingTransactions("alt-miner");
+
+    const bool adopted = chain.tryAdoptChain(other.getChain());
+    assertTrue(!adopted, "Une chaine avec genesis different ne doit jamais etre adoptee.");
+}
+
 } // namespace
 
 int main() {
@@ -561,6 +575,7 @@ int main() {
         testRejectChainWithCoinbaseNotInLastPosition();
         testRejectChainWithMultipleCoinbaseTransactions();
         testRejectChainContainingDuplicateUserTransactionIds();
+        testRejectChainFromDifferentGenesis();
         std::cout << "Tous les tests Novacoin sont passes.\n";
         return 0;
     } catch (const std::exception& ex) {
