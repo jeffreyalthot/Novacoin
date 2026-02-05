@@ -754,6 +754,85 @@ NetworkStats Blockchain::getNetworkStats() const {
     return stats;
 }
 
+
+std::vector<BlockHeaderInfo> Blockchain::getHeadersFromHeight(std::size_t startHeight,
+                                                              std::size_t maxCount) const {
+    if (maxCount == 0 || startHeight >= chain_.size()) {
+        return {};
+    }
+
+    const std::size_t end = std::min(chain_.size(), startHeight + maxCount);
+    std::vector<BlockHeaderInfo> headers;
+    headers.reserve(end - startHeight);
+
+    for (std::size_t height = startHeight; height < end; ++height) {
+        const Block& block = chain_[height];
+        headers.push_back(BlockHeaderInfo{block.getIndex(),
+                                          block.getHash(),
+                                          block.getPreviousHash(),
+                                          block.getTimestamp(),
+                                          block.getDifficulty()});
+    }
+
+    return headers;
+}
+
+std::vector<std::string> Blockchain::getBlockLocatorHashes() const {
+    std::vector<std::string> locator;
+    if (chain_.empty()) {
+        return locator;
+    }
+
+    std::size_t step = 1;
+    std::size_t index = chain_.size() - 1;
+
+    while (true) {
+        locator.push_back(chain_[index].getHash());
+        if (index == 0) {
+            break;
+        }
+
+        if (index <= step) {
+            index = 0;
+        } else {
+            index -= step;
+        }
+
+        if (locator.size() > 10) {
+            step *= 2;
+        }
+    }
+
+    return locator;
+}
+
+std::optional<std::size_t> Blockchain::findHighestLocatorMatch(
+    const std::vector<std::string>& locatorHashes) const {
+    if (locatorHashes.empty()) {
+        return std::nullopt;
+    }
+
+    std::unordered_map<std::string, std::size_t> hashToHeight;
+    hashToHeight.reserve(chain_.size());
+    for (std::size_t i = 0; i < chain_.size(); ++i) {
+        hashToHeight.emplace(chain_[i].getHash(), i);
+    }
+
+    std::optional<std::size_t> best;
+    for (const auto& hash : locatorHashes) {
+        const auto it = hashToHeight.find(hash);
+        if (it == hashToHeight.end()) {
+            continue;
+        }
+
+        if (!best.has_value() || it->second > best.value()) {
+            best = it->second;
+        }
+    }
+
+    return best;
+}
+
 std::vector<std::pair<std::string, Amount>> Blockchain::getTopBalances(std::size_t limit) const {
     if (limit == 0) {
         return {};
