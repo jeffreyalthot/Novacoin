@@ -30,7 +30,8 @@ void printUsage() {
               << "  novacoin-cli headers-sync <max_count> [locator_hash ...]\n"
               << "  novacoin-cli headers-sync-stop <max_count> <stop_hash> [locator_hash ...]\n"
               << "  novacoin-cli block <height|hash>\n"
-              << "  novacoin-cli blocks <max_count>\n";
+              << "  novacoin-cli blocks <max_count>\n"
+              << "  novacoin-cli tx <txid>\n";
 }
 
 double parseDouble(const std::string& raw, const std::string& field) {
@@ -261,6 +262,33 @@ int main(int argc, char* argv[]) {
                           << Transaction::toNOVA(summary.totalFees) << " NOVA"
                           << " hash=" << summary.hash << " prev=" << summary.previousHash << "\n";
             }
+            return 0;
+        }
+
+
+        if (command == "tx") {
+            if (argc != 3) {
+                printUsage();
+                return 1;
+            }
+
+            const auto txLookup = chain.findTransactionById(argv[2]);
+            if (!txLookup.has_value()) {
+                std::cout << "tx_not_found\n";
+                return 0;
+            }
+
+            std::cout << "tx id=" << txLookup->tx.id() << " from=" << txLookup->tx.from << " to=" << txLookup->tx.to
+                      << " amount=" << std::fixed << std::setprecision(8) << Transaction::toNOVA(txLookup->tx.amount)
+                      << " NOVA fee=" << Transaction::toNOVA(txLookup->tx.fee) << " NOVA ts="
+                      << txLookup->tx.timestamp;
+            if (txLookup->isConfirmed) {
+                std::cout << " status=confirmed block_height=" << txLookup->blockHeight.value_or(0)
+                          << " confirmations=" << txLookup->confirmations;
+            } else {
+                std::cout << " status=mempool";
+            }
+            std::cout << "\n";
             return 0;
         }
 
