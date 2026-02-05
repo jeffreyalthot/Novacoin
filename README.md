@@ -16,7 +16,7 @@ Le projet fournit maintenant plusieurs binaires cohérents avec une future archi
 
 - `novacoin` : démonstration principale du noyau blockchain.
 - `novacoind` : simulation d'un nœud daemon.
-- `novacoin-cli` : commandes de base (`mine`, `send`, `balance`, `summary`) + observabilite locale (`address-stats`, `mempool-stats`, `top`) + outils de sync headers-first (`headers`, `locator`, `headers-sync`, `headers-sync-stop`, `block`, `blocks`).
+- `novacoin-cli` : commandes de base (`mine`, `send`, `balance`, `summary`) + observabilite locale (`address-stats`, `mempool-stats`, `top`, `consensus`) + outils de sync headers-first (`headers`, `locator`, `headers-sync`, `headers-sync-stop`, `block`, `blocks`).
 - `novacoin-wallet` : consultation simple d'un wallet local.
 - `novacoin-tx` : construction/inspection d'une transaction.
 - `novacoin-regtest` : scénario de test local déterministe.
@@ -25,7 +25,7 @@ Le projet fournit maintenant plusieurs binaires cohérents avec une future archi
 - ✅ **Phase 1 (noyau single-node)** : chaîne locale, mempool, minage PoW, validation globale.
 - ✅ **Phase 2 (économie NOVA / hard cap)** : récompense + frais bornés, halving, plafond strict `29M`.
 - 🟡 **Phase 3 (consensus PoW production-ready)** :
-  - ✅ validation de timestamp futur borné,
+  - ✅ validation de timestamp futur borné + garde-fou Median-Time-Past (fenêtre glissante),
   - ✅ ajustement dynamique de difficulté par fenêtre,
   - ✅ réorganisations de chaîne locales avec règle de sélection par travail cumulé (most cumulative work).
 - ⏳ **Phases 4 à 9** : en attente (réseau P2P, persistance, wallet, API/CLI, observabilité, audit, testnet/mainnet).

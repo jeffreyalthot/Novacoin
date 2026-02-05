@@ -34,7 +34,8 @@ void printUsage() {
               << "  novacoin-cli blocks-sync-stop <max_count> <stop_hash> [locator_hash ...]\n"
               << "  novacoin-cli block <height|hash>\n"
               << "  novacoin-cli blocks <max_count>\n"
-              << "  novacoin-cli tx <txid>\n";
+              << "  novacoin-cli tx <txid>\n"
+              << "  novacoin-cli consensus\n";
 }
 
 double parseDouble(const std::string& raw, const std::string& field) {
@@ -372,6 +373,27 @@ int main(int argc, char* argv[]) {
                 std::cout << " status=mempool";
             }
             std::cout << "\n";
+            return 0;
+        }
+
+        if (command == "consensus") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+
+            std::cout << "Consensus snapshot\n"
+                      << "  height=" << (chain.getBlockCount() - 1) << "\n"
+                      << "  current_difficulty=" << chain.getCurrentDifficulty() << "\n"
+                      << "  next_difficulty=" << chain.estimateNextDifficulty() << "\n"
+                      << "  cumulative_work=" << chain.getCumulativeWork() << "\n"
+                      << "  median_time_past=" << chain.getMedianTimePast() << "\n"
+                      << "  next_min_timestamp=" << chain.estimateNextMinimumTimestamp() << "\n"
+                      << "  next_reward=" << std::fixed << std::setprecision(8)
+                      << Transaction::toNOVA(chain.estimateNextMiningReward()) << " NOVA\n"
+                      << "  reorg_count=" << chain.getReorgCount() << "\n"
+                      << "  last_reorg_depth=" << chain.getLastReorgDepth() << "\n"
+                      << "  last_fork_height=" << chain.getLastForkHeight() << "\n";
             return 0;
         }
 

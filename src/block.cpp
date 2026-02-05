@@ -34,11 +34,12 @@ std::string difficultyPrefix(unsigned int difficulty) {
 Block::Block(std::uint64_t index,
              std::string previousHash,
              std::vector<Transaction> transactions,
-             unsigned int difficulty)
+             unsigned int difficulty,
+             std::uint64_t timestamp)
     : index_(index),
       previousHash_(std::move(previousHash)),
       transactions_(std::move(transactions)),
-      timestamp_(nowSeconds()),
+      timestamp_(timestamp == 0 ? nowSeconds() : timestamp),
       nonce_(0),
       difficulty_(difficulty),
       hash_() {

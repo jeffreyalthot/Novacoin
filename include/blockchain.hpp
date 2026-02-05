@@ -95,6 +95,8 @@ public:
     [[nodiscard]] Amount getTotalSupply() const;
     [[nodiscard]] unsigned int getCurrentDifficulty() const;
     [[nodiscard]] unsigned int estimateNextDifficulty() const;
+    [[nodiscard]] std::uint64_t getMedianTimePast() const;
+    [[nodiscard]] std::uint64_t estimateNextMinimumTimestamp() const;
     [[nodiscard]] std::size_t getBlockCount() const;
     [[nodiscard]] std::vector<Transaction> getTransactionHistory(const std::string& address) const;
     [[nodiscard]] bool isValid() const;
@@ -142,6 +144,8 @@ private:
     void pruneExpiredPendingTransactions();
     [[nodiscard]] unsigned int expectedDifficultyAtHeight(std::size_t height,
                                                           const std::vector<Block>& referenceChain) const;
+    [[nodiscard]] std::uint64_t medianTimePastAtHeight(std::size_t height,
+                                                       const std::vector<Block>& referenceChain) const;
     [[nodiscard]] bool isChainValid(const std::vector<Block>& candidateChain) const;
     [[nodiscard]] std::uint64_t computeCumulativeWork(const std::vector<Block>& chain) const;
     [[nodiscard]] std::unordered_set<std::string> buildUserTransactionIdSet(const std::vector<Block>& source) const;
