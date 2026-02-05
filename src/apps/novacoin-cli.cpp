@@ -29,6 +29,9 @@ void printUsage() {
               << "  novacoin-cli locator\n"
               << "  novacoin-cli headers-sync <max_count> [locator_hash ...]\n"
               << "  novacoin-cli headers-sync-stop <max_count> <stop_hash> [locator_hash ...]\n"
+              << "  novacoin-cli blocks-from-height <start_height> <max_count>\n"
+              << "  novacoin-cli blocks-sync <max_count> [locator_hash ...]\n"
+              << "  novacoin-cli blocks-sync-stop <max_count> <stop_hash> [locator_hash ...]\n"
               << "  novacoin-cli block <height|hash>\n"
               << "  novacoin-cli blocks <max_count>\n"
               << "  novacoin-cli tx <txid>\n";
@@ -210,6 +213,77 @@ int main(int argc, char* argv[]) {
             for (const auto& header : headers) {
                 std::cout << "  h=" << header.index << " diff=" << header.difficulty << " ts=" << header.timestamp
                           << " hash=" << header.hash << " prev=" << header.previousHash << "\n";
+            }
+            return 0;
+        }
+
+        if (command == "blocks-from-height") {
+            if (argc != 4) {
+                printUsage();
+                return 1;
+            }
+
+            const std::size_t startHeight = parseSize(argv[2], "start_height");
+            const std::size_t maxCount = parseSize(argv[3], "max_count");
+            const auto blocks = chain.getBlocksFromHeight(startHeight, maxCount);
+            std::cout << "blocks_from_height=" << blocks.size() << "\n";
+            for (const auto& summary : blocks) {
+                std::cout << "  h=" << summary.index << " diff=" << summary.difficulty << " ts="
+                          << summary.timestamp << " txs=" << summary.transactionCount << " user_txs="
+                          << summary.userTransactionCount << " fees=" << std::fixed << std::setprecision(8)
+                          << Transaction::toNOVA(summary.totalFees) << " NOVA"
+                          << " hash=" << summary.hash << " prev=" << summary.previousHash << "\n";
+            }
+            return 0;
+        }
+
+        if (command == "blocks-sync") {
+            if (argc < 3) {
+                printUsage();
+                return 1;
+            }
+
+            const std::size_t maxCount = parseSize(argv[2], "max_count");
+            std::vector<std::string> locatorHashes;
+            locatorHashes.reserve(static_cast<std::size_t>(argc > 3 ? argc - 3 : 0));
+            for (int i = 3; i < argc; ++i) {
+                locatorHashes.emplace_back(argv[i]);
+            }
+
+            const auto blocks = chain.getBlocksForLocator(locatorHashes, maxCount);
+            std::cout << "blocks_sync=" << blocks.size() << "\n";
+            for (const auto& summary : blocks) {
+                std::cout << "  h=" << summary.index << " diff=" << summary.difficulty << " ts="
+                          << summary.timestamp << " txs=" << summary.transactionCount << " user_txs="
+                          << summary.userTransactionCount << " fees=" << std::fixed << std::setprecision(8)
+                          << Transaction::toNOVA(summary.totalFees) << " NOVA"
+                          << " hash=" << summary.hash << " prev=" << summary.previousHash << "\n";
+            }
+            return 0;
+        }
+
+        if (command == "blocks-sync-stop") {
+            if (argc < 4) {
+                printUsage();
+                return 1;
+            }
+
+            const std::size_t maxCount = parseSize(argv[2], "max_count");
+            const std::string stopHash = argv[3];
+            std::vector<std::string> locatorHashes;
+            locatorHashes.reserve(static_cast<std::size_t>(argc > 4 ? argc - 4 : 0));
+            for (int i = 4; i < argc; ++i) {
+                locatorHashes.emplace_back(argv[i]);
+            }
+
+            const auto blocks = chain.getBlocksForLocatorWithStop(locatorHashes, maxCount, stopHash);
+            std::cout << "blocks_sync_stop=" << blocks.size() << "\n";
+            for (const auto& summary : blocks) {
+                std::cout << "  h=" << summary.index << " diff=" << summary.difficulty << " ts="
+                          << summary.timestamp << " txs=" << summary.transactionCount << " user_txs="
+                          << summary.userTransactionCount << " fees=" << std::fixed << std::setprecision(8)
+                          << Transaction::toNOVA(summary.totalFees) << " NOVA"
+                          << " hash=" << summary.hash << " prev=" << summary.previousHash << "\n";
             }
             return 0;
         }

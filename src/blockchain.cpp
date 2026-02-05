@@ -961,6 +961,57 @@ BlockSummary Blockchain::makeBlockSummary(const Block& block) const {
     return summary;
 }
 
+std::vector<BlockSummary> Blockchain::getBlocksFromHeight(std::size_t startHeight,
+                                                         std::size_t maxCount) const {
+    if (maxCount == 0 || startHeight >= chain_.size()) {
+        return {};
+    }
+
+    const std::size_t end = std::min(chain_.size(), startHeight + maxCount);
+    std::vector<BlockSummary> blocks;
+    blocks.reserve(end - startHeight);
+
+    for (std::size_t height = startHeight; height < end; ++height) {
+        blocks.push_back(makeBlockSummary(chain_[height]));
+    }
+
+    return blocks;
+}
+
+std::vector<BlockSummary> Blockchain::getBlocksForLocator(const std::vector<std::string>& locatorHashes,
+                                                          std::size_t maxCount) const {
+    return getBlocksForLocatorWithStop(locatorHashes, maxCount, "");
+}
+
+std::vector<BlockSummary> Blockchain::getBlocksForLocatorWithStop(const std::vector<std::string>& locatorHashes,
+                                                                  std::size_t maxCount,
+                                                                  const std::string& stopHash) const {
+    if (maxCount == 0 || chain_.empty()) {
+        return {};
+    }
+
+    std::size_t startHeight = 0;
+    const auto match = findHighestLocatorMatch(locatorHashes);
+    if (match.has_value()) {
+        startHeight = match.value() + 1;
+    }
+
+    std::size_t allowedCount = maxCount;
+    if (!stopHash.empty()) {
+        const auto stopHeight = findBlockHeightByHash(stopHash);
+        if (stopHeight.has_value()) {
+            if (stopHeight.value() < startHeight) {
+                return {};
+            }
+
+            const std::size_t upToStop = stopHeight.value() - startHeight + 1;
+            allowedCount = std::min(allowedCount, upToStop);
+        }
+    }
+
+    return getBlocksFromHeight(startHeight, allowedCount);
+}
+
 std::optional<BlockSummary> Blockchain::getBlockSummaryByHeight(std::size_t height) const {
     if (height >= chain_.size()) {
         return std::nullopt;

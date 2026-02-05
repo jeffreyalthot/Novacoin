@@ -119,6 +119,14 @@ public:
         const std::vector<std::string>& locatorHashes,
         std::size_t maxCount,
         const std::string& stopHash) const;
+    [[nodiscard]] std::vector<BlockSummary> getBlocksFromHeight(std::size_t startHeight,
+                                                                std::size_t maxCount) const;
+    [[nodiscard]] std::vector<BlockSummary> getBlocksForLocator(const std::vector<std::string>& locatorHashes,
+                                                                 std::size_t maxCount) const;
+    [[nodiscard]] std::vector<BlockSummary> getBlocksForLocatorWithStop(
+        const std::vector<std::string>& locatorHashes,
+        std::size_t maxCount,
+        const std::string& stopHash) const;
     [[nodiscard]] std::optional<BlockSummary> getBlockSummaryByHeight(std::size_t height) const;
     [[nodiscard]] std::optional<BlockSummary> getBlockSummaryByHash(const std::string& hash) const;
     [[nodiscard]] std::vector<BlockSummary> getRecentBlockSummaries(std::size_t maxCount) const;
