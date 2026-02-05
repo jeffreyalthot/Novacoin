@@ -83,6 +83,50 @@ void testBlockTemplateRespectsCapacity() {
     assertTrue(templateTxs.size() == 2, "Le template de bloc doit respecter maxTransactionsPerBlock-1.");
 }
 
+
+void testRejectTooLowFeeTransaction() {
+    Blockchain chain{1, 25.0, 3};
+    chain.minePendingTransactions("miner");
+
+    bool threw = false;
+    try {
+        chain.createTransaction(Transaction{"miner", "alice", 1.0, nowSeconds(), 0.0});
+    } catch (const std::invalid_argument&) {
+        threw = true;
+    }
+
+    assertTrue(threw, "Une transaction avec frais sous le minimum doit etre rejetee.");
+}
+
+void testRejectFutureTimestampTransaction() {
+    Blockchain chain{1, 25.0, 3};
+    chain.minePendingTransactions("miner");
+
+    const std::uint64_t futureTs = nowSeconds() + Blockchain::kMaxFutureDriftSeconds + 5;
+    bool threw = false;
+    try {
+        chain.createTransaction(Transaction{"miner", "alice", 1.0, futureTs, 0.1});
+    } catch (const std::invalid_argument&) {
+        threw = true;
+    }
+
+    assertTrue(threw, "Une transaction trop future doit etre rejetee.");
+}
+
+void testTemplatePrioritizesHigherFees() {
+    Blockchain chain{1, 25.0, 3};
+    chain.minePendingTransactions("miner");
+
+    chain.createTransaction(Transaction{"miner", "alice", 1.0, nowSeconds(), 0.1});
+    chain.createTransaction(Transaction{"miner", "bob", 1.0, nowSeconds(), 0.9});
+    chain.createTransaction(Transaction{"miner", "charlie", 1.0, nowSeconds(), 0.5});
+
+    const auto templateTxs = chain.getPendingTransactionsForBlockTemplate();
+    assertTrue(templateTxs.size() == 2, "Le template doit rester limite a la capacite disponible.");
+    assertTrue(templateTxs[0].to == "bob", "La transaction au fee le plus eleve doit etre priorisee.");
+    assertTrue(templateTxs[1].to == "charlie", "La deuxieme transaction doit etre la suivante en fee.");
+}
+
 } // namespace
 
 int main() {
@@ -92,6 +136,9 @@ int main() {
         testRewardIncludesFeesBoundedByCap();
         testRejectDuplicatePendingTransaction();
         testBlockTemplateRespectsCapacity();
+        testRejectTooLowFeeTransaction();
+        testRejectFutureTimestampTransaction();
+        testTemplatePrioritizesHigherFees();
         std::cout << "Tous les tests Novacoin sont passes.\n";
         return 0;
     } catch (const std::exception& ex) {
