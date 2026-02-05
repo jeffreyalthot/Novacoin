@@ -404,6 +404,54 @@ void testDifficultyRetargetIncreasesWhenBlocksTooFast() {
     assertTrue(chain.isValid(), "La chaine doit rester valide apres retarget de difficulte.");
 }
 
+
+void testRejectChainWithCoinbaseNotInLastPosition() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 4};
+    chain.minePendingTransactions("miner");
+
+    const Transaction spend{"miner", "alice", Transaction::fromNOVA(1.0), nowSeconds(), Transaction::fromNOVA(0.2)};
+
+    std::vector<Block> candidate = chain.getChain();
+    candidate.emplace_back(static_cast<std::uint64_t>(candidate.size()),
+                           candidate.back().getHash(),
+                           std::vector<Transaction>{
+                               Transaction{"network", "alt-miner", Transaction::fromNOVA(25.0), nowSeconds(), 0},
+                               spend},
+                           1);
+    candidate.back().mine();
+    candidate.emplace_back(static_cast<std::uint64_t>(candidate.size()),
+                           candidate.back().getHash(),
+                           std::vector<Transaction>{
+                               Transaction{"network", "alt-miner", Transaction::fromNOVA(25.0), nowSeconds(), 0}},
+                           1);
+    candidate.back().mine();
+
+    const bool adopted = chain.tryAdoptChain(candidate);
+    assertTrue(!adopted, "Une chaine doit rejeter un bloc avec coinbase hors derniere position.");
+}
+
+void testRejectChainWithMultipleCoinbaseTransactions() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 4};
+    chain.minePendingTransactions("miner");
+
+    std::vector<Block> candidate = chain.getChain();
+    candidate.emplace_back(static_cast<std::uint64_t>(candidate.size()),
+                           candidate.back().getHash(),
+                           std::vector<Transaction>{
+                               Transaction{"network", "alt-miner", Transaction::fromNOVA(12.5), nowSeconds(), 0},
+                               Transaction{"network", "alt-miner", Transaction::fromNOVA(12.5), nowSeconds(), 0}},
+                           1);
+    candidate.back().mine();
+    candidate.emplace_back(static_cast<std::uint64_t>(candidate.size()),
+                           candidate.back().getHash(),
+                           std::vector<Transaction>{
+                               Transaction{"network", "alt-miner", Transaction::fromNOVA(25.0), nowSeconds(), 0}},
+                           1);
+    candidate.back().mine();
+
+    const bool adopted = chain.tryAdoptChain(candidate);
+    assertTrue(!adopted, "Une chaine doit rejeter un bloc avec plusieurs coinbase.");
+}
 void testRejectChainContainingDuplicateUserTransactionIds() {
     Blockchain chain{1, Transaction::fromNOVA(25.0), 4};
     chain.minePendingTransactions("miner");
@@ -456,6 +504,8 @@ int main() {
         testNetworkStatsExposeChainActivity();
         testAmountConversionRoundTrip();
         testDifficultyRetargetIncreasesWhenBlocksTooFast();
+        testRejectChainWithCoinbaseNotInLastPosition();
+        testRejectChainWithMultipleCoinbaseTransactions();
         testRejectChainContainingDuplicateUserTransactionIds();
         std::cout << "Tous les tests Novacoin sont passes.\n";
         return 0;
