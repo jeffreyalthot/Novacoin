@@ -411,6 +411,30 @@ void testHeadersFromHeightAndLocatorHelpers() {
     assertTrue(!noMatch.has_value(), "Un locator sans hash connu ne doit pas retourner de match.");
 }
 
+
+void testHeadersForLocatorReturnsNextSegment() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 4};
+    chain.minePendingTransactions("miner");
+    chain.minePendingTransactions("miner");
+    chain.minePendingTransactions("miner");
+
+    const auto locator = chain.getBlockLocatorHashes();
+    const auto headers = chain.getHeadersForLocator(locator, 2);
+    assertTrue(headers.empty(), "Avec un locator au tip local, aucun header supplementaire ne doit etre renvoye.");
+
+    const std::string heightOneHash = chain.getChain()[1].getHash();
+    const auto fromForkPoint = chain.getHeadersForLocator({"unknown", heightOneHash}, 5);
+    assertTrue(fromForkPoint.size() == 2,
+               "Le serveur doit renvoyer les headers apres le plus haut hash connu du locator.");
+    assertTrue(fromForkPoint[0].index == 2 && fromForkPoint[1].index == 3,
+               "La reponse headers-sync doit commencer juste apres le dernier bloc commun.");
+
+    const auto fromGenesis = chain.getHeadersForLocator({}, 2);
+    assertTrue(fromGenesis.size() == 2, "Sans locator, la synchronisation doit commencer depuis le genesis.");
+    assertTrue(fromGenesis[0].index == 0 && fromGenesis[1].index == 1,
+               "Sans locator, les premiers headers doivent etre retournes dans l'ordre.");
+}
+
 void testAmountConversionRoundTrip() {
     const Amount sats = Transaction::fromNOVA(12.3456789);
     assertAmountEq(sats, 1'234'567'890, "La conversion NOVA -> satoshis doit etre exacte a 8 decimales.");
@@ -531,6 +555,7 @@ int main() {
         testAddressStatsAndTopBalances();
         testNetworkStatsExposeChainActivity();
         testHeadersFromHeightAndLocatorHelpers();
+        testHeadersForLocatorReturnsNextSegment();
         testAmountConversionRoundTrip();
         testDifficultyRetargetIncreasesWhenBlocksTooFast();
         testRejectChainWithCoinbaseNotInLastPosition();
