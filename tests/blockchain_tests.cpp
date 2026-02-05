@@ -646,6 +646,41 @@ void testRecentBlockSummariesAreOrderedFromTip() {
                "Demander plus que la chaine doit retourner toute la chaine.");
     assertTrue(chain.getRecentBlockSummaries(0).empty(), "Une limite nulle doit retourner une liste vide.");
 }
+
+
+void testFindTransactionByIdForConfirmedTransaction() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 5};
+    chain.minePendingTransactions("miner");
+
+    const Transaction tx{"miner", "alice", Transaction::fromNOVA(1.0), nowSeconds(), Transaction::fromNOVA(0.2)};
+    chain.createTransaction(tx);
+    chain.minePendingTransactions("miner");
+
+    const auto lookup = chain.findTransactionById(tx.id());
+    assertTrue(lookup.has_value(), "La recherche txid doit retrouver une transaction confirmee.");
+    assertTrue(lookup->isConfirmed, "La transaction minee doit etre marquee confirmee.");
+    assertTrue(lookup->blockHeight.has_value() && lookup->blockHeight.value() == 2,
+               "La hauteur du bloc contenant la transaction doit etre exposee.");
+    assertTrue(lookup->confirmations == 1, "Une tx dans le tip doit avoir une confirmation.");
+    assertTrue(lookup->tx.id() == tx.id(), "Le contenu de la transaction retournee doit matcher le txid.");
+}
+
+void testFindTransactionByIdForPendingAndUnknownTransaction() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 5};
+    chain.minePendingTransactions("miner");
+
+    const Transaction tx{"miner", "alice", Transaction::fromNOVA(1.0), nowSeconds(), Transaction::fromNOVA(0.2)};
+    chain.createTransaction(tx);
+
+    const auto pendingLookup = chain.findTransactionById(tx.id());
+    assertTrue(pendingLookup.has_value(), "La recherche txid doit retrouver une transaction mempool.");
+    assertTrue(!pendingLookup->isConfirmed, "La transaction en mempool ne doit pas etre marquee confirmee.");
+    assertTrue(!pendingLookup->blockHeight.has_value(), "La tx mempool ne doit pas avoir de hauteur de bloc.");
+    assertTrue(pendingLookup->confirmations == 0, "La tx mempool doit avoir 0 confirmation.");
+
+    assertTrue(!chain.findTransactionById("unknown-txid").has_value(),
+               "Un txid inconnu ne doit retourner aucun resultat.");
+}
 void testRejectChainFromDifferentGenesis() {
     Blockchain chain{1, Transaction::fromNOVA(25.0), 4};
     chain.minePendingTransactions("miner");
@@ -688,6 +723,8 @@ int main() {
         testHeadersForLocatorWithUnknownStopHashFallsBackToMaxCount();
         testBlockSummaryLookupByHeightAndHash();
         testRecentBlockSummariesAreOrderedFromTip();
+        testFindTransactionByIdForConfirmedTransaction();
+        testFindTransactionByIdForPendingAndUnknownTransaction();
         testExpiredMempoolTransactionsArePruned();
         testAmountConversionRoundTrip();
         testDifficultyRetargetIncreasesWhenBlocksTooFast();

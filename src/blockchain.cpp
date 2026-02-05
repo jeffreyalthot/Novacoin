@@ -951,6 +951,41 @@ std::optional<BlockSummary> Blockchain::getBlockSummaryByHash(const std::string&
     return makeBlockSummary(chain_[height.value()]);
 }
 
+
+std::optional<TransactionLookup> Blockchain::findTransactionById(const std::string& txId) const {
+    if (txId.empty()) {
+        return std::nullopt;
+    }
+
+    for (std::size_t height = chain_.size(); height > 0; --height) {
+        const std::size_t idx = height - 1;
+        const auto& txs = chain_[idx].getTransactions();
+        for (const auto& tx : txs) {
+            if (tx.id() == txId) {
+                TransactionLookup lookup;
+                lookup.tx = tx;
+                lookup.isConfirmed = true;
+                lookup.blockHeight = idx;
+                lookup.confirmations = chain_.size() - idx;
+                return lookup;
+            }
+        }
+    }
+
+    for (const auto& tx : pendingTransactions_) {
+        if (tx.id() == txId) {
+            TransactionLookup lookup;
+            lookup.tx = tx;
+            lookup.isConfirmed = false;
+            lookup.confirmations = 0;
+            lookup.blockHeight = std::nullopt;
+            return lookup;
+        }
+    }
+
+    return std::nullopt;
+}
+
 std::vector<BlockSummary> Blockchain::getRecentBlockSummaries(std::size_t maxCount) const {
     if (maxCount == 0 || chain_.empty()) {
         return {};
