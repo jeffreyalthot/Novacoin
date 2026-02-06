@@ -1,8 +1,29 @@
 #include "rpc/rpc_dispatcher.hpp"
 
 #include <algorithm>
+#include <array>
+#include <sstream>
+#include <string_view>
 
 namespace rpc {
+namespace {
+constexpr std::array<std::string_view, 4> kBuiltinMethods = {
+    "rpc.ping",
+    "rpc.echo",
+    "rpc.context",
+    "rpc.listMethods"};
+
+std::string joinParams(const std::vector<std::string>& params, const char* delimiter) {
+    std::ostringstream out;
+    for (std::size_t i = 0; i < params.size(); ++i) {
+        if (i > 0) {
+            out << delimiter;
+        }
+        out << params[i];
+    }
+    return out.str();
+}
+} // namespace
 
 bool RpcDispatcher::registerHandler(const std::string& method, RpcHandler handler) {
     if (method.empty() || !handler) {
@@ -25,6 +46,27 @@ RpcResponse RpcDispatcher::dispatch(const RpcRequest& request, const RpcContext&
         return RpcResponse::failure(request.id, RpcErrorCode::InvalidRequest, "Invalid RPC request");
     }
 
+    if (request.method == "rpc.ping") {
+        return RpcResponse::success(request.id, "pong");
+    }
+
+    if (request.method == "rpc.echo") {
+        return RpcResponse::success(request.id, joinParams(request.params, " "));
+    }
+
+    if (request.method == "rpc.context") {
+        std::ostringstream out;
+        out << "node_name=" << context.nodeName << " network=" << context.network;
+        return RpcResponse::success(request.id, out.str());
+    }
+
+    if (request.method == "rpc.listMethods") {
+        const auto methods = listMethods();
+        std::ostringstream out;
+        out << "methods=" << joinParams(methods, ", ");
+        return RpcResponse::success(request.id, out.str());
+    }
+
     auto it = handlers_.find(request.method);
     if (it == handlers_.end()) {
         return RpcResponse::failure(request.id, RpcErrorCode::MethodNotFound, "RPC method not found");
@@ -35,11 +77,15 @@ RpcResponse RpcDispatcher::dispatch(const RpcRequest& request, const RpcContext&
 
 std::vector<std::string> RpcDispatcher::listMethods() const {
     std::vector<std::string> methods;
-    methods.reserve(handlers_.size());
+    methods.reserve(handlers_.size() + kBuiltinMethods.size());
+    for (const auto method : kBuiltinMethods) {
+        methods.emplace_back(method);
+    }
     for (const auto& entry : handlers_) {
         methods.push_back(entry.first);
     }
     std::sort(methods.begin(), methods.end());
+    methods.erase(std::unique(methods.begin(), methods.end()), methods.end());
     return methods;
 }
 

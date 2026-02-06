@@ -19,11 +19,15 @@ void printUsage() {
               << "  novacoind mine <miner> [count]\n"
               << "  novacoind submit <from> <to> <amount_nova> [fee_nova]\n"
               << "  novacoind mempool\n"
+              << "  novacoind mempool-ids\n"
               << "  novacoind network-stats\n"
               << "  novacoind difficulty\n"
               << "  novacoind supply\n"
+              << "  novacoind monetary [height]\n"
+              << "  novacoind supply-audit <start_height> <max_count>\n"
               << "  novacoind consensus\n"
               << "  novacoind reorgs\n"
+              << "  novacoind chain-health\n"
               << "  novacoind height\n"
               << "  novacoind tip\n"
               << "  novacoind params\n";
@@ -126,6 +130,23 @@ int main(int argc, char* argv[]) {
             return 0;
         }
 
+        if (command == "mempool-ids") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+
+            const auto blockTemplate = daemonChain.getPendingTransactionsForBlockTemplate();
+            std::cout << "mempool_ids=" << blockTemplate.size() << "\n";
+            for (std::size_t i = 0; i < blockTemplate.size(); ++i) {
+                const auto& tx = blockTemplate[i];
+                std::cout << "  #" << (i + 1) << " id=" << tx.id() << " fee=" << std::fixed
+                          << std::setprecision(8) << Transaction::toNOVA(tx.fee) << " NOVA"
+                          << " amount=" << Transaction::toNOVA(tx.amount) << " NOVA\n";
+            }
+            return 0;
+        }
+
         if (command == "network-stats") {
             if (argc != 2) {
                 printUsage();
@@ -171,6 +192,54 @@ int main(int argc, char* argv[]) {
             return 0;
         }
 
+        if (command == "monetary") {
+            if (argc > 3) {
+                printUsage();
+                return 1;
+            }
+
+            const std::size_t height = argc == 3
+                ? parseSize(argv[2], "height")
+                : (daemonChain.getBlockCount() > 0 ? daemonChain.getBlockCount() - 1 : 0);
+            const auto projection = daemonChain.getMonetaryProjection(height);
+            std::cout << "monetary\n"
+                      << "  height=" << projection.height << "\n"
+                      << "  subsidy_current=" << std::fixed << std::setprecision(8)
+                      << Transaction::toNOVA(projection.currentSubsidy) << " NOVA\n"
+                      << "  projected_supply=" << Transaction::toNOVA(projection.projectedSupply)
+                      << " NOVA\n"
+                      << "  issuance_remaining=" << Transaction::toNOVA(projection.remainingIssuable)
+                      << " NOVA\n"
+                      << "  next_halving_height=" << projection.nextHalvingHeight << "\n"
+                      << "  next_subsidy=" << Transaction::toNOVA(projection.nextSubsidy) << " NOVA\n";
+            return 0;
+        }
+
+        if (command == "supply-audit") {
+            if (argc != 4) {
+                printUsage();
+                return 1;
+            }
+
+            const std::size_t startHeight = parseSize(argv[2], "start_height");
+            const std::size_t maxCount = parseSize(argv[3], "max_count");
+            const auto audit = daemonChain.getSupplyAudit(startHeight, maxCount);
+            std::cout << "supply_audit=" << audit.size() << "\n";
+            for (const auto& entry : audit) {
+                std::cout << "  h=" << entry.height
+                          << " subsidy=" << std::fixed << std::setprecision(8)
+                          << Transaction::toNOVA(entry.blockSubsidy) << " NOVA"
+                          << " fees=" << Transaction::toNOVA(entry.totalFees) << " NOVA"
+                          << " minted=" << Transaction::toNOVA(entry.mintedReward) << " NOVA"
+                          << " max_allowed=" << Transaction::toNOVA(entry.maxAllowedReward) << " NOVA"
+                          << " supply=" << Transaction::toNOVA(entry.cumulativeSupply) << " NOVA"
+                          << " reward_ok=" << (entry.rewardWithinLimit ? "yes" : "no")
+                          << " cap_ok=" << (entry.supplyWithinCap ? "yes" : "no")
+                          << " hash=" << entry.hash << "\n";
+            }
+            return 0;
+        }
+
         if (command == "consensus") {
             if (argc != 2) {
                 printUsage();
@@ -198,6 +267,23 @@ int main(int argc, char* argv[]) {
                       << "  last_reorg_depth=" << daemonChain.getLastReorgDepth() << "\n"
                       << "  last_fork_height=" << daemonChain.getLastForkHeight() << "\n"
                       << "  last_fork_hash=" << daemonChain.getLastForkHash() << "\n";
+            return 0;
+        }
+
+        if (command == "chain-health") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+            std::cout << "chain_health\n"
+                      << "  height=" << daemonChain.getBlockCount() - 1 << "\n"
+                      << "  chain_valid=" << std::boolalpha << daemonChain.isValid() << "\n"
+                      << "  cumulative_work=" << daemonChain.getCumulativeWork() << "\n"
+                      << "  reorg_count=" << daemonChain.getReorgCount() << "\n"
+                      << "  last_reorg_depth=" << daemonChain.getLastReorgDepth() << "\n"
+                      << "  last_fork_height=" << daemonChain.getLastForkHeight() << "\n"
+                      << "  last_fork_hash=" << daemonChain.getLastForkHash() << "\n"
+                      << "  pending_tx=" << daemonChain.getPendingTransactions().size() << "\n";
             return 0;
         }
 

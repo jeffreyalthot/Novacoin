@@ -20,9 +20,12 @@ void printUsage() {
               << "  novacoin-wallet wallet-info <wallet.dat> [passphrase]\n"
               << "  novacoin-wallet wallet-derive <wallet.dat> <index> [passphrase]\n"
               << "  novacoin-wallet wallet-derive-range <wallet.dat> <start_index> <count> [passphrase]\n"
+              << "  novacoin-wallet wallet-addresses <wallet.dat> <count> [passphrase]\n"
               << "  novacoin-wallet wallet-wif <wallet.dat> <index> [passphrase]\n"
+              << "  novacoin-wallet wallet-wif-from-hex <wallet.dat> <private_key_hex> [passphrase]\n"
               << "  novacoin-wallet wallet-address <wallet.dat> <index> [passphrase]\n"
               << "  novacoin-wallet wallet-derive-address <wallet.dat> <index> [passphrase]\n"
+              << "  novacoin-wallet wallet-hex-from-wif <wallet.dat> <wif> [passphrase]\n"
               << "  novacoin-wallet wallet-public-key <wallet.dat> <index> [passphrase]\n"
               << "  novacoin-wallet wallet-script <wallet.dat> <index> [passphrase]\n"
               << "  novacoin-wallet wallet-validate <wallet.dat> [passphrase]\n"
@@ -265,6 +268,23 @@ int main(int argc, char* argv[]) {
                 return 0;
             }
 
+            if (command == "wallet-addresses") {
+                if (argc < 4 || argc > 5) {
+                    printUsage();
+                    return 1;
+                }
+                const std::string path = requireArg(argv[2], "Chemin wallet.dat manquant.");
+                std::size_t count = parseSize(requireArg(argv[3], "Count manquant."), "count");
+                std::string passphrase = argc == 5 ? argv[4] : "";
+                auto walletStore = wallet::WalletStore::load(path, passphrase);
+                std::cout << "addresses count=" << count << "\n";
+                for (std::size_t index = 0; index < count; ++index) {
+                    std::cout << "  [" << index << "] "
+                              << walletStore.deriveAddress(static_cast<std::uint32_t>(index), passphrase) << "\n";
+                }
+                return 0;
+            }
+
             if (command == "wallet-incoming") {
                 if (argc < 3 || argc > 4) {
                     printUsage();
@@ -282,6 +302,32 @@ int main(int argc, char* argv[]) {
                               << Transaction::toNOVA(tx.amount) << " NOVA fee=" << Transaction::toNOVA(tx.fee)
                               << " NOVA ts=" << tx.timestamp << "\n";
                 }
+                return 0;
+            }
+
+            if (command == "wallet-wif-from-hex") {
+                if (argc < 4 || argc > 5) {
+                    printUsage();
+                    return 1;
+                }
+                const std::string path = requireArg(argv[2], "Chemin wallet.dat manquant.");
+                const std::string privateKeyHex = requireArg(argv[3], "Cle privee manquante.");
+                std::string passphrase = argc == 5 ? argv[4] : "";
+                auto walletStore = wallet::WalletStore::load(path, passphrase);
+                std::cout << "wif=" << walletStore.privateKeyHexToWif(privateKeyHex) << "\n";
+                return 0;
+            }
+
+            if (command == "wallet-hex-from-wif") {
+                if (argc < 4 || argc > 5) {
+                    printUsage();
+                    return 1;
+                }
+                const std::string path = requireArg(argv[2], "Chemin wallet.dat manquant.");
+                const std::string wif = requireArg(argv[3], "WIF manquant.");
+                std::string passphrase = argc == 5 ? argv[4] : "";
+                auto walletStore = wallet::WalletStore::load(path, passphrase);
+                std::cout << "private_key_hex=" << walletStore.privateKeyHexFromWif(wif) << "\n";
                 return 0;
             }
 
