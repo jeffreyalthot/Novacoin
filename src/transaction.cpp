@@ -62,6 +62,13 @@ Transaction Transaction::deserialize(const std::string& payload) {
         throw std::invalid_argument("Transaction invalide: valeurs numeriques incorrectes.");
     }
 
+    if (tx.from.empty() || tx.to.empty()) {
+        throw std::invalid_argument("Transaction invalide: adresses manquantes.");
+    }
+    if (tx.amount < 0 || tx.fee < 0) {
+        throw std::invalid_argument("Transaction invalide: montants negatifs.");
+    }
+
     return tx;
 }
 
