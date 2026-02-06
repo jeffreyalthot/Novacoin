@@ -4,6 +4,10 @@
 #include <chrono>
 
 namespace {
+constexpr int levelValue(LogLevel level) {
+    return static_cast<int>(level);
+}
+
 const char* toString(LogLevel level) {
     switch (level) {
         case LogLevel::Debug:
@@ -18,12 +22,20 @@ const char* toString(LogLevel level) {
             return "INFO";
     }
 }
+
+bool shouldLog(LogLevel level, LogLevel minimum) {
+    return levelValue(level) >= levelValue(minimum);
+}
 }
 
 Logger::Logger(std::size_t maxEntries) : maxEntries_(std::max<std::size_t>(1, maxEntries)) {
 }
 
 void Logger::log(LogLevel level, std::string_view component, std::string_view message) {
+    if (!shouldLog(level, minLevel_)) {
+        return;
+    }
+
     if (entries_.size() == maxEntries_) {
         entries_.pop_front();
     }
@@ -58,6 +70,18 @@ std::size_t Logger::size() const {
 
 bool Logger::empty() const {
     return entries_.empty();
+}
+
+void Logger::clear() {
+    entries_.clear();
+}
+
+void Logger::setMinLevel(LogLevel level) {
+    minLevel_ = level;
+}
+
+LogLevel Logger::minLevel() const {
+    return minLevel_;
 }
 
 std::string Logger::format(const LogEntry& entry) {

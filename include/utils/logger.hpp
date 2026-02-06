@@ -34,12 +34,17 @@ public:
     [[nodiscard]] std::vector<LogEntry> entries() const;
     [[nodiscard]] std::size_t size() const;
     [[nodiscard]] bool empty() const;
+    void clear();
+
+    void setMinLevel(LogLevel level);
+    [[nodiscard]] LogLevel minLevel() const;
 
     static std::string format(const LogEntry& entry);
 
 private:
     std::size_t maxEntries_ = 500;
     std::deque<LogEntry> entries_;
+    LogLevel minLevel_ = LogLevel::Debug;
 
     static std::uint64_t nowSeconds();
 };
