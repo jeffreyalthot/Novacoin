@@ -1144,30 +1144,8 @@ std::vector<BlockSummary> Blockchain::getBlocksForLocator(const std::vector<std:
 std::vector<BlockSummary> Blockchain::getBlocksForLocatorWithStop(const std::vector<std::string>& locatorHashes,
                                                                   std::size_t maxCount,
                                                                   const std::string& stopHash) const {
-    if (maxCount == 0 || chain_.empty()) {
-        return {};
-    }
-
-    std::size_t startHeight = 0;
-    const auto match = findHighestLocatorMatch(locatorHashes);
-    if (match.has_value()) {
-        startHeight = match.value() + 1;
-    }
-
-    std::size_t allowedCount = maxCount;
-    if (!stopHash.empty()) {
-        const auto stopHeight = findBlockHeightByHash(stopHash);
-        if (stopHeight.has_value()) {
-            if (stopHeight.value() < startHeight) {
-                return {};
-            }
-
-            const std::size_t upToStop = stopHeight.value() - startHeight + 1;
-            allowedCount = std::min(allowedCount, upToStop);
-        }
-    }
-
-    return getBlocksFromHeight(startHeight, allowedCount);
+    const auto syncStatus = getSyncStatus(locatorHashes, maxCount, stopHash);
+    return getBlocksFromHeight(syncStatus.nextHeight, syncStatus.responseBlockCount);
 }
 
 std::optional<BlockSummary> Blockchain::getBlockSummaryByHeight(std::size_t height) const {
@@ -1222,6 +1200,47 @@ std::optional<TransactionLookup> Blockchain::findTransactionById(const std::stri
     return std::nullopt;
 }
 
+SyncStatus Blockchain::getSyncStatus(const std::vector<std::string>& locatorHashes,
+                                     std::size_t maxCount,
+                                     const std::string& stopHash) const {
+    SyncStatus status;
+    if (chain_.empty()) {
+        return status;
+    }
+
+    status.localHeight = chain_.size() - 1;
+    status.maxResponseBlocks = maxCount;
+
+    const auto match = findHighestLocatorMatch(locatorHashes);
+    status.locatorHeight = match;
+
+    std::size_t startHeight = 0;
+    if (match.has_value()) {
+        startHeight = match.value() + 1;
+    }
+
+    status.nextHeight = startHeight;
+    status.remainingBlocks = startHeight < chain_.size() ? chain_.size() - startHeight : 0;
+
+    std::size_t allowedCount = maxCount;
+    if (!stopHash.empty()) {
+        const auto stopHeight = findBlockHeightByHash(stopHash);
+        status.stopHeight = stopHeight;
+        if (stopHeight.has_value()) {
+            if (stopHeight.value() < startHeight) {
+                status.responseBlockCount = 0;
+                return status;
+            }
+
+            const std::size_t upToStop = stopHeight.value() - startHeight + 1;
+            allowedCount = std::min(allowedCount, upToStop);
+        }
+    }
+
+    status.responseBlockCount = std::min(status.remainingBlocks, allowedCount);
+    return status;
+}
+
 std::vector<BlockSummary> Blockchain::getRecentBlockSummaries(std::size_t maxCount) const {
     if (maxCount == 0 || chain_.empty()) {
         return {};
@@ -1247,30 +1266,8 @@ std::vector<BlockHeaderInfo> Blockchain::getHeadersForLocator(const std::vector<
 std::vector<BlockHeaderInfo> Blockchain::getHeadersForLocatorWithStop(const std::vector<std::string>& locatorHashes,
                                                                       std::size_t maxCount,
                                                                       const std::string& stopHash) const {
-    if (maxCount == 0 || chain_.empty()) {
-        return {};
-    }
-
-    std::size_t startHeight = 0;
-    const auto match = findHighestLocatorMatch(locatorHashes);
-    if (match.has_value()) {
-        startHeight = match.value() + 1;
-    }
-
-    std::size_t allowedCount = maxCount;
-    if (!stopHash.empty()) {
-        const auto stopHeight = findBlockHeightByHash(stopHash);
-        if (stopHeight.has_value()) {
-            if (stopHeight.value() < startHeight) {
-                return {};
-            }
-
-            const std::size_t upToStop = stopHeight.value() - startHeight + 1;
-            allowedCount = std::min(allowedCount, upToStop);
-        }
-    }
-
-    return getHeadersFromHeight(startHeight, allowedCount);
+    const auto syncStatus = getSyncStatus(locatorHashes, maxCount, stopHash);
+    return getHeadersFromHeight(syncStatus.nextHeight, syncStatus.responseBlockCount);
 }
 
 std::vector<std::pair<std::string, Amount>> Blockchain::getTopBalances(std::size_t limit) const {
