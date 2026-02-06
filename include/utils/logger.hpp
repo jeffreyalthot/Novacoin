@@ -39,6 +39,8 @@ public:
 
     void setMinLevel(LogLevel level);
     [[nodiscard]] LogLevel minLevel() const;
+    void setMaxEntries(std::size_t maxEntries);
+    [[nodiscard]] std::size_t maxEntries() const;
 
     static std::string format(const LogEntry& entry);
 

@@ -94,6 +94,19 @@ LogLevel Logger::minLevel() const {
     return minLevel_;
 }
 
+void Logger::setMaxEntries(std::size_t maxEntries) {
+    std::lock_guard<std::mutex> guard(mutex_);
+    maxEntries_ = std::max<std::size_t>(1, maxEntries);
+    while (entries_.size() > maxEntries_) {
+        entries_.pop_front();
+    }
+}
+
+std::size_t Logger::maxEntries() const {
+    std::lock_guard<std::mutex> guard(mutex_);
+    return maxEntries_;
+}
+
 std::string Logger::format(const LogEntry& entry) {
     const std::string timestamp = std::to_string(entry.timestamp);
     const std::string level = toString(entry.level);
