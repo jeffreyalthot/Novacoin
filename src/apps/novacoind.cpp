@@ -19,9 +19,11 @@ void printUsage() {
               << "  novacoind mine <miner> [count]\n"
               << "  novacoind submit <from> <to> <amount_nova> [fee_nova]\n"
               << "  novacoind mempool\n"
+              << "  novacoind mempool-stats\n"
               << "  novacoind mempool-ids\n"
               << "  novacoind network-stats\n"
               << "  novacoind difficulty\n"
+              << "  novacoind time\n"
               << "  novacoind supply\n"
               << "  novacoind monetary [height]\n"
               << "  novacoind supply-audit <start_height> <max_count>\n"
@@ -130,6 +132,25 @@ int main(int argc, char* argv[]) {
             return 0;
         }
 
+        if (command == "mempool-stats") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+            const auto stats = daemonChain.getMempoolStats();
+            std::cout << "mempool_stats\n"
+                      << "  tx_count=" << stats.transactionCount << "\n"
+                      << "  total_amount=" << std::fixed << std::setprecision(8)
+                      << Transaction::toNOVA(stats.totalAmount) << " NOVA\n"
+                      << "  total_fees=" << Transaction::toNOVA(stats.totalFees) << " NOVA\n"
+                      << "  min_fee=" << Transaction::toNOVA(stats.minFee) << " NOVA\n"
+                      << "  max_fee=" << Transaction::toNOVA(stats.maxFee) << " NOVA\n"
+                      << "  median_fee=" << Transaction::toNOVA(stats.medianFee) << " NOVA\n"
+                      << "  oldest_ts=" << stats.oldestTimestamp << "\n"
+                      << "  newest_ts=" << stats.newestTimestamp << "\n";
+            return 0;
+        }
+
         if (command == "mempool-ids") {
             if (argc != 2) {
                 printUsage();
@@ -176,6 +197,17 @@ int main(int argc, char* argv[]) {
             std::cout << "difficulty\n"
                       << "  current=" << daemonChain.getCurrentDifficulty() << "\n"
                       << "  next=" << daemonChain.estimateNextDifficulty() << "\n";
+            return 0;
+        }
+
+        if (command == "time") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+            std::cout << "time\n"
+                      << "  median_time_past=" << daemonChain.getMedianTimePast() << "\n"
+                      << "  next_min_timestamp=" << daemonChain.estimateNextMinimumTimestamp() << "\n";
             return 0;
         }
 

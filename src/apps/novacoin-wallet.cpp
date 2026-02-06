@@ -18,6 +18,7 @@ void printUsage() {
               << "  novacoin-wallet wallet-create <wallet.dat> [--encrypt] [passphrase]\n"
               << "  novacoin-wallet wallet-restore <wallet.dat> <wif> [--encrypt] [passphrase]\n"
               << "  novacoin-wallet wallet-info <wallet.dat> [passphrase]\n"
+              << "  novacoin-wallet wallet-address-info <wallet.dat> <index> [passphrase]\n"
               << "  novacoin-wallet wallet-derive <wallet.dat> <index> [passphrase]\n"
               << "  novacoin-wallet wallet-derive-range <wallet.dat> <start_index> <count> [passphrase]\n"
               << "  novacoin-wallet wallet-addresses <wallet.dat> <count> [passphrase]\n"
@@ -31,6 +32,7 @@ void printUsage() {
               << "  novacoin-wallet wallet-validate <wallet.dat> [passphrase]\n"
               << "  novacoin-wallet wallet-ckey <wallet.dat> [passphrase]\n"
               << "  novacoin-wallet wallet-incoming <wallet.dat> [passphrase]\n"
+              << "  novacoin-wallet wallet-incoming-summary <wallet.dat> [passphrase]\n"
               << "  novacoin-wallet wallet-from-wif <wif>\n"
               << "  novacoin-wallet <address>\n";
 }
@@ -159,6 +161,27 @@ int main(int argc, char* argv[]) {
                 std::string passphrase = argc == 4 ? argv[3] : "";
                 auto walletStore = wallet::WalletStore::load(path, passphrase);
                 std::cout << "master_key_hex=" << walletStore.decryptMasterKeyHex(passphrase) << "\n";
+                return 0;
+            }
+
+            if (command == "wallet-address-info") {
+                if (argc < 4 || argc > 5) {
+                    printUsage();
+                    return 1;
+                }
+                const std::string path = requireArg(argv[2], "Chemin wallet.dat manquant.");
+                std::size_t index = parseSize(requireArg(argv[3], "Index manquant."), "index");
+                std::string passphrase = argc == 5 ? argv[4] : "";
+                auto walletStore = wallet::WalletStore::load(path, passphrase);
+                const std::string privateKeyHex = walletStore.derivePrivateKeyHex(static_cast<std::uint32_t>(index),
+                                                                                   passphrase);
+                const std::string publicKey = walletStore.privateKeyHexToPublicKey(privateKeyHex);
+                const std::string address = walletStore.publicKeyToAddress(publicKey);
+                std::cout << "address_info index=" << index << "\n"
+                          << "  p2pkh_address=" << address << "\n"
+                          << "  public_key_hex=" << publicKey << "\n"
+                          << "  public_key_script=" << walletStore.publicKeyToPublicKeyScript(publicKey) << "\n"
+                          << "  wif=" << walletStore.privateKeyHexToWif(privateKeyHex) << "\n";
                 return 0;
             }
 
@@ -302,6 +325,29 @@ int main(int argc, char* argv[]) {
                               << Transaction::toNOVA(tx.amount) << " NOVA fee=" << Transaction::toNOVA(tx.fee)
                               << " NOVA ts=" << tx.timestamp << "\n";
                 }
+                return 0;
+            }
+
+            if (command == "wallet-incoming-summary") {
+                if (argc < 3 || argc > 4) {
+                    printUsage();
+                    return 1;
+                }
+                const std::string path = requireArg(argv[2], "Chemin wallet.dat manquant.");
+                std::string passphrase = argc == 4 ? argv[3] : "";
+                auto walletStore = wallet::WalletStore::load(path, passphrase);
+                const auto& incoming = walletStore.incomingTransactions();
+                Amount totalAmount = 0;
+                Amount totalFees = 0;
+                for (const auto& tx : incoming) {
+                    totalAmount += tx.amount;
+                    totalFees += tx.fee;
+                }
+                std::cout << "incoming_summary\n"
+                          << "  tx_count=" << incoming.size() << "\n"
+                          << "  total_amount=" << std::fixed << std::setprecision(8)
+                          << Transaction::toNOVA(totalAmount) << " NOVA\n"
+                          << "  total_fees=" << Transaction::toNOVA(totalFees) << " NOVA\n";
                 return 0;
             }
 

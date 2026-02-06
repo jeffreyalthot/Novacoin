@@ -19,11 +19,13 @@ void printUsage() {
               << "  novacoin-tx create <from> <to> <amount_nova> [fee_nova]\n"
               << "  novacoin-tx decode <serialized_tx>\n"
               << "  novacoin-tx id <serialized_tx>\n"
+              << "  novacoin-tx size <serialized_tx>\n"
               << "  novacoin-tx summary <serialized_tx>\n"
               << "  novacoin-tx addresses <serialized_tx>\n"
               << "  novacoin-tx from <serialized_tx>\n"
               << "  novacoin-tx to <serialized_tx>\n"
               << "  novacoin-tx amount <serialized_tx>\n"
+              << "  novacoin-tx total-nova <serialized_tx>\n"
               << "  novacoin-tx amounts <serialized_tx>\n"
               << "  novacoin-tx fee <serialized_tx>\n"
               << "  novacoin-tx total <serialized_tx>\n"
@@ -95,6 +97,11 @@ void printTransactionAmount(const Transaction& tx) {
     std::cout << std::fixed << std::setprecision(8) << Transaction::toNOVA(tx.amount) << "\n";
 }
 
+void printTransactionTotalNova(const Transaction& tx) {
+    const Amount total = tx.amount + tx.fee;
+    std::cout << std::fixed << std::setprecision(8) << Transaction::toNOVA(total) << "\n";
+}
+
 void printTransactionAmounts(const Transaction& tx) {
     const Amount total = tx.amount + tx.fee;
     std::cout << "Amounts\n"
@@ -162,6 +169,16 @@ int main(int argc, char* argv[]) {
             return 0;
         }
 
+        if (command == "size") {
+            if (argc != 3) {
+                printUsage();
+                return 1;
+            }
+            const Transaction tx = Transaction::deserialize(argv[2]);
+            std::cout << "serialized_size=" << tx.serialize().size() << "\n";
+            return 0;
+        }
+
         if (command == "summary") {
             if (argc != 3) {
                 printUsage();
@@ -209,6 +226,16 @@ int main(int argc, char* argv[]) {
             }
             const Transaction tx = Transaction::deserialize(argv[2]);
             printTransactionAmount(tx);
+            return 0;
+        }
+
+        if (command == "total-nova") {
+            if (argc != 3) {
+                printUsage();
+                return 1;
+            }
+            const Transaction tx = Transaction::deserialize(argv[2]);
+            printTransactionTotalNova(tx);
             return 0;
         }
 

@@ -2,16 +2,26 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <sstream>
 #include <string_view>
 
 namespace rpc {
 namespace {
-constexpr std::array<std::string_view, 4> kBuiltinMethods = {
+constexpr std::array<std::string_view, 6> kBuiltinMethods = {
     "rpc.ping",
     "rpc.echo",
     "rpc.context",
-    "rpc.listMethods"};
+    "rpc.listMethods",
+    "rpc.time",
+    "rpc.version"};
+
+constexpr const char* kRpcVersion = "0.1.0";
+
+std::uint64_t nowSeconds() {
+    using namespace std::chrono;
+    return static_cast<std::uint64_t>(duration_cast<seconds>(system_clock::now().time_since_epoch()).count());
+}
 
 std::string joinParams(const std::vector<std::string>& params, const char* delimiter) {
     std::ostringstream out;
@@ -64,6 +74,18 @@ RpcResponse RpcDispatcher::dispatch(const RpcRequest& request, const RpcContext&
         const auto methods = listMethods();
         std::ostringstream out;
         out << "methods=" << joinParams(methods, ", ");
+        return RpcResponse::success(request.id, out.str());
+    }
+
+    if (request.method == "rpc.time") {
+        std::ostringstream out;
+        out << "now=" << nowSeconds();
+        return RpcResponse::success(request.id, out.str());
+    }
+
+    if (request.method == "rpc.version") {
+        std::ostringstream out;
+        out << "version=" << kRpcVersion << " node_name=" << context.nodeName << " network=" << context.network;
         return RpcResponse::success(request.id, out.str());
     }
 
