@@ -21,6 +21,8 @@ void printUsage() {
               << "  novacoind mempool\n"
               << "  novacoind mempool-stats\n"
               << "  novacoind mempool-ids\n"
+              << "  novacoind mempool-summary\n"
+              << "  novacoind mempool-age\n"
               << "  novacoind network-stats\n"
               << "  novacoind difficulty\n"
               << "  novacoind time\n"
@@ -32,7 +34,8 @@ void printUsage() {
               << "  novacoind chain-health\n"
               << "  novacoind height\n"
               << "  novacoind tip\n"
-              << "  novacoind params\n";
+              << "  novacoind params\n"
+              << "  novacoind version\n";
 }
 
 double parseDouble(const std::string& raw, const std::string& field) {
@@ -165,6 +168,38 @@ int main(int argc, char* argv[]) {
                           << std::setprecision(8) << Transaction::toNOVA(tx.fee) << " NOVA"
                           << " amount=" << Transaction::toNOVA(tx.amount) << " NOVA\n";
             }
+            return 0;
+        }
+
+        if (command == "mempool-summary") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+            const auto stats = daemonChain.getMempoolStats();
+            const Amount total = stats.totalAmount + stats.totalFees;
+            std::cout << "mempool_summary\n"
+                      << "  tx_count=" << stats.transactionCount << "\n"
+                      << "  total_amount=" << std::fixed << std::setprecision(8)
+                      << Transaction::toNOVA(stats.totalAmount) << " NOVA\n"
+                      << "  total_fees=" << Transaction::toNOVA(stats.totalFees) << " NOVA\n"
+                      << "  total_including_fees=" << Transaction::toNOVA(total) << " NOVA\n";
+            return 0;
+        }
+
+        if (command == "mempool-age") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+            const auto stats = daemonChain.getMempoolStats();
+            std::cout << "mempool_age\n"
+                      << "  tx_count=" << stats.transactionCount << "\n"
+                      << "  oldest_ts=" << stats.oldestTimestamp << "\n"
+                      << "  newest_ts=" << stats.newestTimestamp << "\n"
+                      << "  min_age_s=" << stats.minAgeSeconds << "\n"
+                      << "  median_age_s=" << stats.medianAgeSeconds << "\n"
+                      << "  max_age_s=" << stats.maxAgeSeconds << "\n";
             return 0;
         }
 
@@ -370,6 +405,16 @@ int main(int argc, char* argv[]) {
                       << "  mempool_expiry_s=" << Blockchain::kMempoolExpirySeconds << "\n"
                       << "  max_mempool_txs=" << Blockchain::kMaxMempoolTransactions << "\n"
                       << "  min_relay_fee=" << Transaction::toNOVA(Blockchain::kMinRelayFee) << " NOVA\n";
+            return 0;
+        }
+
+        if (command == "version") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+            std::cout << "novacoind version=0.1.0\n"
+                      << "  network=regtest\n";
             return 0;
         }
 

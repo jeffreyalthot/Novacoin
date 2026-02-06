@@ -23,6 +23,8 @@ void printUsage() {
               << "  novacoin-wallet wallet-derive-range <wallet.dat> <start_index> <count> [passphrase]\n"
               << "  novacoin-wallet wallet-addresses <wallet.dat> <count> [passphrase]\n"
               << "  novacoin-wallet wallet-wif <wallet.dat> <index> [passphrase]\n"
+              << "  novacoin-wallet wallet-public-key-from-wif <wallet.dat> <wif> [passphrase]\n"
+              << "  novacoin-wallet wallet-address-from-wif <wallet.dat> <wif> [passphrase]\n"
               << "  novacoin-wallet wallet-wif-from-hex <wallet.dat> <private_key_hex> [passphrase]\n"
               << "  novacoin-wallet wallet-address <wallet.dat> <index> [passphrase]\n"
               << "  novacoin-wallet wallet-derive-address <wallet.dat> <index> [passphrase]\n"
@@ -361,6 +363,26 @@ int main(int argc, char* argv[]) {
                 std::string passphrase = argc == 5 ? argv[4] : "";
                 auto walletStore = wallet::WalletStore::load(path, passphrase);
                 std::cout << "wif=" << walletStore.privateKeyHexToWif(privateKeyHex) << "\n";
+                return 0;
+            }
+
+            if (command == "wallet-public-key-from-wif" || command == "wallet-address-from-wif") {
+                if (argc < 4 || argc > 5) {
+                    printUsage();
+                    return 1;
+                }
+                const std::string path = requireArg(argv[2], "Chemin wallet.dat manquant.");
+                const std::string wif = requireArg(argv[3], "WIF manquant.");
+                std::string passphrase = argc == 5 ? argv[4] : "";
+                auto walletStore = wallet::WalletStore::load(path, passphrase);
+                const std::string privateKeyHex = walletStore.privateKeyHexFromWif(wif);
+                const std::string publicKey = walletStore.privateKeyHexToPublicKey(privateKeyHex);
+                if (command == "wallet-public-key-from-wif") {
+                    std::cout << "public_key_hex=" << publicKey << "\n";
+                } else {
+                    const std::string address = walletStore.publicKeyToAddress(publicKey);
+                    std::cout << "p2pkh_address=" << address << "\n";
+                }
                 return 0;
             }
 

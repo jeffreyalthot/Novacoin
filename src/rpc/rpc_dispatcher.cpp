@@ -8,12 +8,14 @@
 
 namespace rpc {
 namespace {
-constexpr std::array<std::string_view, 6> kBuiltinMethods = {
+constexpr std::array<std::string_view, 8> kBuiltinMethods = {
     "rpc.ping",
     "rpc.echo",
     "rpc.context",
     "rpc.listMethods",
+    "rpc.methodsCount",
     "rpc.time",
+    "rpc.uptime",
     "rpc.version"};
 
 constexpr const char* kRpcVersion = "0.1.0";
@@ -56,6 +58,8 @@ RpcResponse RpcDispatcher::dispatch(const RpcRequest& request, const RpcContext&
         return RpcResponse::failure(request.id, RpcErrorCode::InvalidRequest, "Invalid RPC request");
     }
 
+    static const auto startTime = nowSeconds();
+
     if (request.method == "rpc.ping") {
         return RpcResponse::success(request.id, "pong");
     }
@@ -77,9 +81,22 @@ RpcResponse RpcDispatcher::dispatch(const RpcRequest& request, const RpcContext&
         return RpcResponse::success(request.id, out.str());
     }
 
+    if (request.method == "rpc.methodsCount") {
+        const auto methods = listMethods();
+        std::ostringstream out;
+        out << "method_count=" << methods.size();
+        return RpcResponse::success(request.id, out.str());
+    }
+
     if (request.method == "rpc.time") {
         std::ostringstream out;
         out << "now=" << nowSeconds();
+        return RpcResponse::success(request.id, out.str());
+    }
+
+    if (request.method == "rpc.uptime") {
+        std::ostringstream out;
+        out << "uptime_s=" << (nowSeconds() - startTime);
         return RpcResponse::success(request.id, out.str());
     }
 
