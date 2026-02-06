@@ -7,6 +7,8 @@
 #include <stdexcept>
 #include <thread>
 
+
+void runPlatformModulesTests();
 namespace {
 std::uint64_t nowSeconds() {
     using namespace std::chrono;
@@ -1040,6 +1042,7 @@ int main() {
         testRejectChainWithoutMoreWork();
         testReorgReinjectsDetachedTransactionsIntoMempool();
         testReorgMempoolRemovesTransactionsAlreadyOnNewChain();
+        runPlatformModulesTests();
         testReorgMempoolDropsNowUnfundedTransactions();
         testNoReorgMetricsChangeWhenAdoptionRejected();
         testReorgMetricsTrackDepthAndForkHeight();

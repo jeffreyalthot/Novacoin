@@ -40,6 +40,9 @@ else()
 endif()
 
 enable_testing()
-add_executable(novacoin_tests tests/blockchain_tests.cpp)
+add_executable(novacoin_tests
+    tests/blockchain_tests.cpp
+    tests/platform_modules_tests.cpp
+)
 target_link_libraries(novacoin_tests PRIVATE novacoin_core)
 add_test(NAME novacoin_tests COMMAND novacoin_tests)
