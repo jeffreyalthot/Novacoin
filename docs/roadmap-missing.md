@@ -15,7 +15,7 @@ Ce document synthétise les fonctionnalités, outils et garde-fous **manquants**
 
 > Focus : consensus, sécurité et tests (verrouillage du cœur).
 
-- [ ] Spécification protocolaire v1 publiée + règles de sérialisation canonique.
+- [ ] Spécification protocolaire v1 publiée + règles de sérialisation canonique (brouillon : `docs/architecture/protocol-spec-v1.md`).
 - [ ] Invariants de supply testés (hard cap + rewards + fees).
 - [ ] Vecteurs de tests consensus (blocs/tx invalides ciblés).
 - [ ] Pipeline de validation stricte (timestamps, sigops, poids blocs).
