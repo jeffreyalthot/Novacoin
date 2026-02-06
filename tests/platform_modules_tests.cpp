@@ -1,6 +1,7 @@
 #include "consensus/chain_params.hpp"
 #include "mempool/policy.hpp"
 #include "network/peer_manager.hpp"
+#include "network/seed_registry.hpp"
 #include "rpc/rpc_context.hpp"
 #include "storage/chain_snapshot.hpp"
 #include "utils/logger.hpp"
@@ -36,6 +37,20 @@ void testPeerManagerCapacityAndValidation() {
     assertTrue(!peers.addPeer("10.0.0.3:8333"), "La capacite maximale doit etre appliquee.");
 }
 
+
+
+void testSeedRegistryCapacityAndOrdering() {
+    SeedRegistry seeds{2};
+    assertTrue(seeds.addSeed("seed-1.novacoin.org:8333"), "Une seed valide doit etre ajoutee.");
+    assertTrue(!seeds.addSeed("seed-1.novacoin.org:8333"), "Une seed dupliquee ne doit pas etre ajoutee.");
+    assertTrue(!seeds.addSeed("seed-2.novacoin.org"), "Une seed sans port ne doit pas etre acceptee.");
+    assertTrue(seeds.addSeed("seed-0.novacoin.org:8333"), "La seconde seed valide doit etre acceptee.");
+    assertTrue(!seeds.addSeed("seed-3.novacoin.org:8333"), "La capacite maximale des seeds doit etre appliquee.");
+
+    const auto listed = seeds.listSeeds();
+    assertTrue(listed.size() == 2, "La liste des seeds doit contenir deux entrees.");
+    assertTrue(listed[0] == "seed-0.novacoin.org:8333", "La liste des seeds doit etre triee.");
+}
 
 void testExtendedModuleScaffolding() {
     const auto params = consensus::defaultChainParams();
@@ -75,6 +90,7 @@ void testChainSnapshotBuilder() {
 void runPlatformModulesTests() {
     testLoggerRingBufferBehavior();
     testPeerManagerCapacityAndValidation();
+    testSeedRegistryCapacityAndOrdering();
     testExtendedModuleScaffolding();
     testChainSnapshotBuilder();
 }

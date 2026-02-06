@@ -18,7 +18,7 @@ Le dépôt adopte une structure en dossiers pour accélérer les futures extensi
 - `src/consensus/` et `include/consensus/` pour les paramètres et réglages consensus,
 - `src/mempool/` et `include/mempool/` pour les règles d’acceptation transactionnelle,
 - `src/validation/` et `include/validation/` pour les validateurs dédiés,
-- `src/network/` et `include/network/` pour la gestion des pairs P2P,
+- `src/network/` et `include/network/` pour la gestion des pairs P2P et des seeds de bootstrap,
 - `src/storage/` et `include/storage/` pour les snapshots/abstractions de persistance,
 - `src/rpc/` et `include/rpc/` pour les structures de contexte d’API de nœud,
 - `src/wallet/` et `include/wallet/` pour les profils et métadonnées wallet,
