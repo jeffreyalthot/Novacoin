@@ -988,29 +988,38 @@ Amount Blockchain::estimateRequiredFeeForInclusion(std::size_t targetBlocks) con
 
 MempoolStats Blockchain::getMempoolStats() const {
     MempoolStats stats;
-    stats.transactionCount = pendingTransactions_.size();
+    const std::uint64_t now = nowSeconds();
+    std::vector<const Transaction*> eligible;
+    eligible.reserve(pendingTransactions_.size());
 
-    if (pendingTransactions_.empty()) {
+    for (const auto& tx : pendingTransactions_) {
+        if (!isTimestampAcceptable(tx.timestamp) || isMempoolTransactionExpired(tx, now)) {
+            continue;
+        }
+        eligible.push_back(&tx);
+    }
+
+    stats.transactionCount = eligible.size();
+    if (eligible.empty()) {
         return stats;
     }
 
     std::vector<Amount> fees;
-    fees.reserve(pendingTransactions_.size());
+    fees.reserve(eligible.size());
     std::vector<std::uint64_t> ages;
-    ages.reserve(pendingTransactions_.size());
+    ages.reserve(eligible.size());
 
-    stats.minFee = pendingTransactions_.front().fee;
-    stats.maxFee = pendingTransactions_.front().fee;
-    stats.oldestTimestamp = pendingTransactions_.front().timestamp;
-    stats.newestTimestamp = pendingTransactions_.front().timestamp;
-    const std::uint64_t now = nowSeconds();
-    const std::uint64_t firstAge = pendingTransactions_.front().timestamp >= now ? 0 : now - pendingTransactions_.front().timestamp;
+    stats.minFee = eligible.front()->fee;
+    stats.maxFee = eligible.front()->fee;
+    stats.oldestTimestamp = eligible.front()->timestamp;
+    stats.newestTimestamp = eligible.front()->timestamp;
+    const std::uint64_t firstAge = eligible.front()->timestamp >= now ? 0 : now - eligible.front()->timestamp;
     stats.minAgeSeconds = firstAge;
     stats.maxAgeSeconds = firstAge;
     ages.push_back(firstAge);
 
-    for (std::size_t i = 0; i < pendingTransactions_.size(); ++i) {
-        const auto& tx = pendingTransactions_[i];
+    for (std::size_t i = 0; i < eligible.size(); ++i) {
+        const auto& tx = *eligible[i];
         if (!safeAdd(stats.totalAmount, tx.amount, stats.totalAmount) ||
             !safeAdd(stats.totalFees, tx.fee, stats.totalFees)) {
             throw std::overflow_error("Overflow mempool totals.");
