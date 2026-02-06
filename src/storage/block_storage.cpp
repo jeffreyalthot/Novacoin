@@ -1,9 +1,12 @@
 #include "storage/block_storage.hpp"
 
+#include <algorithm>
 #include <sstream>
 #include <string_view>
 
 namespace {
+constexpr unsigned char kCompressionMarker = 0x00;
+
 void appendField(std::string& out, const std::string& field) {
     out += std::to_string(field.size());
     out += ':';
@@ -47,6 +50,61 @@ std::optional<std::uint64_t> decodeNumber(const std::string& value) {
     } catch (const std::exception&) {
         return std::nullopt;
     }
+}
+
+std::string compressUltimateFast(std::string_view input) {
+    std::string out;
+    out.reserve(input.size());
+    std::size_t i = 0;
+    while (i < input.size()) {
+        const unsigned char value = static_cast<unsigned char>(input[i]);
+        std::size_t run = 1;
+        while (i + run < input.size()
+               && static_cast<unsigned char>(input[i + run]) == value) {
+            ++run;
+        }
+
+        if (value == kCompressionMarker || run >= 4) {
+            std::size_t remaining = run;
+            while (remaining > 0) {
+                const auto chunk = static_cast<unsigned char>(std::min<std::size_t>(remaining, 255));
+                out.push_back(static_cast<char>(kCompressionMarker));
+                out.push_back(static_cast<char>(chunk));
+                out.push_back(static_cast<char>(value));
+                remaining -= chunk;
+            }
+        } else {
+            out.append(input.substr(i, run));
+        }
+
+        i += run;
+    }
+    return out;
+}
+
+std::optional<std::string> decompressUltimateFast(std::string_view input) {
+    std::string out;
+    out.reserve(input.size());
+    std::size_t i = 0;
+    while (i < input.size()) {
+        const unsigned char value = static_cast<unsigned char>(input[i]);
+        if (value != kCompressionMarker) {
+            out.push_back(static_cast<char>(value));
+            ++i;
+            continue;
+        }
+        if (i + 2 >= input.size()) {
+            return std::nullopt;
+        }
+        const unsigned char count = static_cast<unsigned char>(input[i + 1]);
+        const unsigned char repeated = static_cast<unsigned char>(input[i + 2]);
+        if (count == 0) {
+            return std::nullopt;
+        }
+        out.append(count, static_cast<char>(repeated));
+        i += 3;
+    }
+    return out;
 }
 } // namespace
 
@@ -126,6 +184,18 @@ std::optional<StoredBlockHeader> BlockStorageCodec::decodeHeader(const std::stri
     return header;
 }
 
+std::string BlockStorageCodec::compressHeader(const StoredBlockHeader& header) {
+    return compressUltimateFast(encodeHeader(header));
+}
+
+std::optional<StoredBlockHeader> BlockStorageCodec::decompressHeader(const std::string& payload) {
+    auto decompressed = decompressUltimateFast(payload);
+    if (!decompressed) {
+        return std::nullopt;
+    }
+    return decodeHeader(*decompressed);
+}
+
 std::string BlockStorageCodec::encodeBlock(const Block& block) {
     std::string out;
     appendField(out, encodeHeader(headerFromBlock(block)));
@@ -185,6 +255,18 @@ std::optional<Block> BlockStorageCodec::decodeBlock(const std::string& payload) 
                  header.timestamp,
                  header.nonce,
                  header.hash);
+}
+
+std::string BlockStorageCodec::compressBlock(const Block& block) {
+    return compressUltimateFast(encodeBlock(block));
+}
+
+std::optional<Block> BlockStorageCodec::decompressBlock(const std::string& payload) {
+    auto decompressed = decompressUltimateFast(payload);
+    if (!decompressed) {
+        return std::nullopt;
+    }
+    return decodeBlock(*decompressed);
 }
 
 std::string BlockStorageCodec::encodeHeaderBatch(const std::vector<StoredBlockHeader>& headers) {

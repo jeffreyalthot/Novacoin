@@ -21,9 +21,13 @@ public:
 
     static std::string encodeHeader(const StoredBlockHeader& header);
     static std::optional<StoredBlockHeader> decodeHeader(const std::string& payload);
+    static std::string compressHeader(const StoredBlockHeader& header);
+    static std::optional<StoredBlockHeader> decompressHeader(const std::string& payload);
 
     static std::string encodeBlock(const Block& block);
     static std::optional<Block> decodeBlock(const std::string& payload);
+    static std::string compressBlock(const Block& block);
+    static std::optional<Block> decompressBlock(const std::string& payload);
 
     static std::string encodeHeaderBatch(const std::vector<StoredBlockHeader>& headers);
     static std::vector<StoredBlockHeader> decodeHeaderBatch(const std::string& payload);
