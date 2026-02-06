@@ -47,6 +47,10 @@ Block::Block(std::uint64_t index,
 }
 
 void Block::mine() {
+    const std::size_t hashLength = hash_.size();
+    if (difficulty_ == 0 || difficulty_ > hashLength) {
+        return;
+    }
     const std::string targetPrefix = difficultyPrefix(difficulty_);
 
     do {
@@ -56,6 +60,9 @@ void Block::mine() {
 }
 
 bool Block::hasValidHash() const {
+    if (difficulty_ > hash_.size()) {
+        return false;
+    }
     const std::string targetPrefix = difficultyPrefix(difficulty_);
     return hash_ == computeHash() && hash_.compare(0, targetPrefix.size(), targetPrefix) == 0;
 }
