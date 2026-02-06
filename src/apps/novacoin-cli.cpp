@@ -11,6 +11,8 @@
 #include <vector>
 
 namespace {
+constexpr const char* kCliVersion = "0.1.0";
+
 std::uint64_t nowSeconds() {
     using namespace std::chrono;
     return static_cast<std::uint64_t>(duration_cast<seconds>(system_clock::now().time_since_epoch()).count());
@@ -26,6 +28,7 @@ void printUsage() {
               << "  novacoin-cli address-stats <address>\n"
               << "  novacoin-cli network-stats\n"
               << "  novacoin-cli mempool-stats\n"
+              << "  novacoin-cli mempool-summary\n"
               << "  novacoin-cli mempool [limit]\n"
               << "  novacoin-cli mempool-ids [limit]\n"
               << "  novacoin-cli mempool-fees\n"
@@ -56,7 +59,8 @@ void printUsage() {
               << "  novacoin-cli supply-audit <start_height> <max_count>\n"
               << "  novacoin-cli chain-health\n"
               << "  novacoin-cli height\n"
-              << "  novacoin-cli tip\n";
+              << "  novacoin-cli tip\n"
+              << "  novacoin-cli version\n";
 }
 
 double parseDouble(const std::string& raw, const std::string& field) {
@@ -218,6 +222,23 @@ int main(int argc, char* argv[]) {
                       << "  min_age_s=" << stats.minAgeSeconds << "\n"
                       << "  max_age_s=" << stats.maxAgeSeconds << "\n"
                       << "  median_age_s=" << stats.medianAgeSeconds << "\n";
+            return 0;
+        }
+
+        if (command == "mempool-summary") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+
+            const auto stats = chain.getMempoolStats();
+            const Amount total = stats.totalAmount + stats.totalFees;
+            std::cout << "Mempool summary\n"
+                      << "  tx_count=" << stats.transactionCount << "\n"
+                      << "  total_amount=" << std::fixed << std::setprecision(8)
+                      << Transaction::toNOVA(stats.totalAmount) << " NOVA\n"
+                      << "  total_fees=" << Transaction::toNOVA(stats.totalFees) << " NOVA\n"
+                      << "  total_including_fees=" << Transaction::toNOVA(total) << " NOVA\n";
             return 0;
         }
 
@@ -828,6 +849,17 @@ int main(int argc, char* argv[]) {
                       << "  height=" << tip.getIndex() << "\n"
                       << "  hash=" << tip.getHash() << "\n"
                       << "  prev_hash=" << tip.getPreviousHash() << "\n";
+            return 0;
+        }
+
+        if (command == "version") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+            std::cout << "novacoin-cli version=" << kCliVersion << "\n"
+                      << "  max_supply=" << std::fixed << std::setprecision(8)
+                      << Transaction::toNOVA(Blockchain::kMaxSupply) << " NOVA\n";
             return 0;
         }
 
