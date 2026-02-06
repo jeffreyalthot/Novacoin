@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <deque>
 #include <string>
+#include <string_view>
 #include <vector>
 
 enum class LogLevel {
@@ -24,11 +25,11 @@ class Logger {
 public:
     explicit Logger(std::size_t maxEntries = 500);
 
-    void log(LogLevel level, const std::string& component, const std::string& message);
-    void debug(const std::string& component, const std::string& message);
-    void info(const std::string& component, const std::string& message);
-    void warning(const std::string& component, const std::string& message);
-    void error(const std::string& component, const std::string& message);
+    void log(LogLevel level, std::string_view component, std::string_view message);
+    void debug(std::string_view component, std::string_view message);
+    void info(std::string_view component, std::string_view message);
+    void warning(std::string_view component, std::string_view message);
+    void error(std::string_view component, std::string_view message);
 
     [[nodiscard]] std::vector<LogEntry> entries() const;
     [[nodiscard]] std::size_t size() const;
