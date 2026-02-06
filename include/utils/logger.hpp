@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <deque>
 #include <string>
 #include <vector>
 
@@ -37,7 +38,7 @@ public:
 
 private:
     std::size_t maxEntries_ = 500;
-    std::vector<LogEntry> entries_;
+    std::deque<LogEntry> entries_;
 
     static std::uint64_t nowSeconds();
 };

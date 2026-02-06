@@ -14,19 +14,18 @@ const char* toString(LogLevel level) {
             return "WARNING";
         case LogLevel::Error:
             return "ERROR";
+        default:
+            return "INFO";
     }
-
-    return "INFO";
 }
 }
 
 Logger::Logger(std::size_t maxEntries) : maxEntries_(std::max<std::size_t>(1, maxEntries)) {
-    entries_.reserve(maxEntries_);
 }
 
 void Logger::log(LogLevel level, const std::string& component, const std::string& message) {
     if (entries_.size() == maxEntries_) {
-        entries_.erase(entries_.begin());
+        entries_.pop_front();
     }
 
     entries_.push_back(LogEntry{nowSeconds(), level, component, message});
@@ -49,7 +48,7 @@ void Logger::error(const std::string& component, const std::string& message) {
 }
 
 std::vector<LogEntry> Logger::entries() const {
-    return entries_;
+    return std::vector<LogEntry>(entries_.begin(), entries_.end());
 }
 
 std::size_t Logger::size() const {
