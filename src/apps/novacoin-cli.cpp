@@ -179,7 +179,12 @@ int main(int argc, char* argv[]) {
                       << "  total_fees=" << Transaction::toNOVA(stats.totalFees) << " NOVA\n"
                       << "  min_fee=" << Transaction::toNOVA(stats.minFee) << " NOVA\n"
                       << "  max_fee=" << Transaction::toNOVA(stats.maxFee) << " NOVA\n"
-                      << "  median_fee=" << Transaction::toNOVA(stats.medianFee) << " NOVA\n";
+                      << "  median_fee=" << Transaction::toNOVA(stats.medianFee) << " NOVA\n"
+                      << "  oldest_ts=" << stats.oldestTimestamp << "\n"
+                      << "  newest_ts=" << stats.newestTimestamp << "\n"
+                      << "  min_age_s=" << stats.minAgeSeconds << "\n"
+                      << "  max_age_s=" << stats.maxAgeSeconds << "\n"
+                      << "  median_age_s=" << stats.medianAgeSeconds << "\n";
             return 0;
         }
 

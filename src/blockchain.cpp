@@ -985,11 +985,21 @@ MempoolStats Blockchain::getMempoolStats() const {
 
     std::vector<Amount> fees;
     fees.reserve(pendingTransactions_.size());
+    std::vector<std::uint64_t> ages;
+    ages.reserve(pendingTransactions_.size());
 
     stats.minFee = pendingTransactions_.front().fee;
     stats.maxFee = pendingTransactions_.front().fee;
+    stats.oldestTimestamp = pendingTransactions_.front().timestamp;
+    stats.newestTimestamp = pendingTransactions_.front().timestamp;
+    const std::uint64_t now = nowSeconds();
+    const std::uint64_t firstAge = pendingTransactions_.front().timestamp >= now ? 0 : now - pendingTransactions_.front().timestamp;
+    stats.minAgeSeconds = firstAge;
+    stats.maxAgeSeconds = firstAge;
+    ages.push_back(firstAge);
 
-    for (const auto& tx : pendingTransactions_) {
+    for (std::size_t i = 0; i < pendingTransactions_.size(); ++i) {
+        const auto& tx = pendingTransactions_[i];
         if (!safeAdd(stats.totalAmount, tx.amount, stats.totalAmount) ||
             !safeAdd(stats.totalFees, tx.fee, stats.totalFees)) {
             throw std::overflow_error("Overflow mempool totals.");
@@ -998,6 +1008,14 @@ MempoolStats Blockchain::getMempoolStats() const {
         stats.minFee = std::min(stats.minFee, tx.fee);
         stats.maxFee = std::max(stats.maxFee, tx.fee);
         fees.push_back(tx.fee);
+        stats.oldestTimestamp = std::min(stats.oldestTimestamp, tx.timestamp);
+        stats.newestTimestamp = std::max(stats.newestTimestamp, tx.timestamp);
+        if (i != 0) {
+            const std::uint64_t age = tx.timestamp >= now ? 0 : now - tx.timestamp;
+            stats.minAgeSeconds = std::min(stats.minAgeSeconds, age);
+            stats.maxAgeSeconds = std::max(stats.maxAgeSeconds, age);
+            ages.push_back(age);
+        }
     }
 
     std::sort(fees.begin(), fees.end());
@@ -1006,6 +1024,14 @@ MempoolStats Blockchain::getMempoolStats() const {
         stats.medianFee = fees[mid];
     } else {
         stats.medianFee = fees[mid - 1] + (fees[mid] - fees[mid - 1]) / 2;
+    }
+
+    std::sort(ages.begin(), ages.end());
+    const std::size_t ageMid = ages.size() / 2;
+    if (ages.size() % 2 == 1) {
+        stats.medianAgeSeconds = ages[ageMid];
+    } else {
+        stats.medianAgeSeconds = ages[ageMid - 1] + (ages[ageMid] - ages[ageMid - 1]) / 2;
     }
 
     return stats;
@@ -1359,6 +1385,11 @@ std::string Blockchain::getChainSummary() const {
     out << "- mempool_min_fee=" << Transaction::toNOVA(mempoolStats.minFee) << "\n";
     out << "- mempool_max_fee=" << Transaction::toNOVA(mempoolStats.maxFee) << "\n";
     out << "- mempool_median_fee=" << Transaction::toNOVA(mempoolStats.medianFee) << "\n";
+    out << "- mempool_oldest_ts=" << mempoolStats.oldestTimestamp << "\n";
+    out << "- mempool_newest_ts=" << mempoolStats.newestTimestamp << "\n";
+    out << "- mempool_min_age_s=" << mempoolStats.minAgeSeconds << "\n";
+    out << "- mempool_max_age_s=" << mempoolStats.maxAgeSeconds << "\n";
+    out << "- mempool_median_age_s=" << mempoolStats.medianAgeSeconds << "\n";
 
     const NetworkStats networkStats = getNetworkStats();
     out << "- network_user_transactions=" << networkStats.userTransactionCount << "\n";

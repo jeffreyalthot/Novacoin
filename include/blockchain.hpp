@@ -41,6 +41,11 @@ struct MempoolStats {
     Amount minFee = 0;
     Amount maxFee = 0;
     Amount medianFee = 0;
+    std::uint64_t oldestTimestamp = 0;
+    std::uint64_t newestTimestamp = 0;
+    std::uint64_t minAgeSeconds = 0;
+    std::uint64_t maxAgeSeconds = 0;
+    std::uint64_t medianAgeSeconds = 0;
 };
 
 struct BlockHeaderInfo {
