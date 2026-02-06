@@ -5,40 +5,162 @@
 #include <exception>
 #include <iomanip>
 #include <iostream>
+#include <string>
+#include <vector>
 
 namespace {
 std::uint64_t nowSeconds() {
     using namespace std::chrono;
     return static_cast<std::uint64_t>(duration_cast<seconds>(system_clock::now().time_since_epoch()).count());
 }
+
+void printUsage() {
+    std::cout << "Usage:\n"
+              << "  novacoin-regtest summary\n"
+              << "  novacoin-regtest balances\n"
+              << "  novacoin-regtest mine <miner> [count]\n"
+              << "  novacoin-regtest send <from> <to> <amount_nova> [fee_nova]\n"
+              << "  novacoin-regtest history <address> [limit]\n";
+}
+
+double parseDouble(const std::string& raw, const std::string& field) {
+    std::size_t consumed = 0;
+    const double value = std::stod(raw, &consumed);
+    if (consumed != raw.size()) {
+        throw std::invalid_argument("Valeur invalide pour " + field + ": " + raw);
+    }
+    return value;
+}
+
+std::size_t parseSize(const std::string& raw, const std::string& field) {
+    std::size_t consumed = 0;
+    const auto value = std::stoull(raw, &consumed);
+    if (consumed != raw.size()) {
+        throw std::invalid_argument("Valeur invalide pour " + field + ": " + raw);
+    }
+    return static_cast<std::size_t>(value);
+}
+
+void printBalances(const Blockchain& chain, const std::vector<std::string>& addresses) {
+    for (const auto& address : addresses) {
+        std::cout << "  " << address << ": " << std::fixed << std::setprecision(8)
+                  << Transaction::toNOVA(chain.getBalance(address)) << " NOVA\n";
+    }
+}
+
+void printSummary(const Blockchain& regtest, const std::vector<std::string>& addresses) {
+    std::cout << "regtest summary\n"
+              << "  blocks: " << regtest.getBlockCount() << "\n"
+              << "  supply: " << std::fixed << std::setprecision(8)
+              << Transaction::toNOVA(regtest.getTotalSupply()) << " NOVA\n";
+    printBalances(regtest, addresses);
+    std::cout << "  valid: " << std::boolalpha << regtest.isValid() << "\n";
+}
+
+Blockchain seedRegtest() {
+    Blockchain regtest{1, Transaction::fromNOVA(100.0), 6};
+
+    regtest.minePendingTransactions("minerA");
+    regtest.createTransaction(
+        Transaction{"minerA", "alice", Transaction::fromNOVA(12.0), nowSeconds(), Transaction::fromNOVA(0.2)});
+    regtest.createTransaction(
+        Transaction{"minerA", "bob", Transaction::fromNOVA(8.0), nowSeconds(), Transaction::fromNOVA(0.2)});
+    regtest.minePendingTransactions("minerA");
+
+    regtest.createTransaction(
+        Transaction{"alice", "carol", Transaction::fromNOVA(2.0), nowSeconds(), Transaction::fromNOVA(0.1)});
+    regtest.minePendingTransactions("minerB");
+
+    return regtest;
+}
 } // namespace
 
-int main() {
+int main(int argc, char* argv[]) {
     try {
-        Blockchain regtest{1, Transaction::fromNOVA(100.0), 6};
+        const std::vector<std::string> addresses = {"minerA", "minerB", "alice", "bob", "carol"};
+        Blockchain regtest = seedRegtest();
 
-        regtest.minePendingTransactions("minerA");
-        regtest.createTransaction(
-            Transaction{"minerA", "alice", Transaction::fromNOVA(12.0), nowSeconds(), Transaction::fromNOVA(0.2)});
-        regtest.createTransaction(
-            Transaction{"minerA", "bob", Transaction::fromNOVA(8.0), nowSeconds(), Transaction::fromNOVA(0.2)});
-        regtest.minePendingTransactions("minerA");
+        const std::string command = argc > 1 ? argv[1] : "summary";
+        if (command == "summary") {
+            if (argc != 1 && argc != 2) {
+                printUsage();
+                return 1;
+            }
+            printSummary(regtest, addresses);
+            return 0;
+        }
 
-        regtest.createTransaction(
-            Transaction{"alice", "carol", Transaction::fromNOVA(2.0), nowSeconds(), Transaction::fromNOVA(0.1)});
-        regtest.minePendingTransactions("minerB");
+        if (command == "balances") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+            std::cout << "balances\n";
+            printBalances(regtest, addresses);
+            return 0;
+        }
 
-        std::cout << "regtest summary\n"
-                  << "  blocks: " << regtest.getBlockCount() << "\n"
-                  << "  supply: " << std::fixed << std::setprecision(8)
-                  << Transaction::toNOVA(regtest.getTotalSupply()) << " NOVA\n"
-                  << "  minerA: " << Transaction::toNOVA(regtest.getBalance("minerA")) << " NOVA\n"
-                  << "  minerB: " << Transaction::toNOVA(regtest.getBalance("minerB")) << " NOVA\n"
-                  << "  alice: " << Transaction::toNOVA(regtest.getBalance("alice")) << " NOVA\n"
-                  << "  bob: " << Transaction::toNOVA(regtest.getBalance("bob")) << " NOVA\n"
-                  << "  carol: " << Transaction::toNOVA(regtest.getBalance("carol")) << " NOVA\n"
-                  << "  valid: " << std::boolalpha << regtest.isValid() << "\n";
-        return 0;
+        if (command == "mine") {
+            if (argc < 3 || argc > 4) {
+                printUsage();
+                return 1;
+            }
+            const std::string miner = argv[2];
+            if (miner.empty()) {
+                throw std::invalid_argument("Le miner ne peut pas etre vide.");
+            }
+            const std::size_t count = argc == 4 ? parseSize(argv[3], "count") : 1;
+            for (std::size_t i = 0; i < count; ++i) {
+                regtest.minePendingTransactions(miner);
+            }
+            std::cout << "mined " << count << " blocks\n"
+                      << "  height: " << regtest.getBlockCount() - 1 << "\n"
+                      << "  supply: " << std::fixed << std::setprecision(8)
+                      << Transaction::toNOVA(regtest.getTotalSupply()) << " NOVA\n";
+            return 0;
+        }
+
+        if (command == "send") {
+            if (argc < 5 || argc > 6) {
+                printUsage();
+                return 1;
+            }
+            const Amount amount = Transaction::fromNOVA(parseDouble(argv[4], "amount_nova"));
+            const Amount fee =
+                argc == 6 ? Transaction::fromNOVA(parseDouble(argv[5], "fee_nova")) : Transaction::fromNOVA(0.01);
+            regtest.createTransaction(Transaction{argv[2], argv[3], amount, nowSeconds(), fee});
+            std::cout << "transaction queued\n"
+                      << "  mempool_size=" << regtest.getPendingTransactions().size() << "\n";
+            return 0;
+        }
+
+        if (command == "history") {
+            if (argc < 3 || argc > 4) {
+                printUsage();
+                return 1;
+            }
+            const std::string address = argv[2];
+            if (address.empty()) {
+                throw std::invalid_argument("L'adresse ne peut pas etre vide.");
+            }
+            const std::size_t limit = argc == 4 ? parseSize(argv[3], "limit") : 0;
+            const auto history = regtest.getTransactionHistoryDetailed(address, limit, true);
+            std::cout << "history: " << address << "\n";
+            if (history.empty()) {
+                std::cout << "  (aucune transaction)\n";
+                return 0;
+            }
+            for (std::size_t i = 0; i < history.size(); ++i) {
+                const auto& entry = history[i];
+                std::cout << "  #" << (i + 1) << " id=" << entry.tx.id()
+                          << " amount=" << std::fixed << std::setprecision(8)
+                          << Transaction::toNOVA(entry.tx.amount) << " NOVA\n";
+            }
+            return 0;
+        }
+
+        printUsage();
+        return 1;
     } catch (const std::exception& ex) {
         std::cerr << "Erreur regtest: " << ex.what() << "\n";
         return 1;

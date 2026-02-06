@@ -26,6 +26,10 @@ void printUsage() {
               << "  novacoin-cli network-stats\n"
               << "  novacoin-cli mempool-stats\n"
               << "  novacoin-cli mempool [limit]\n"
+              << "  novacoin-cli difficulty\n"
+              << "  novacoin-cli time\n"
+              << "  novacoin-cli reorgs\n"
+              << "  novacoin-cli reward-estimate\n"
               << "  novacoin-cli fee-estimate <target_blocks>\n"
               << "  novacoin-cli top <limit>\n"
               << "  novacoin-cli headers <start_height> <max_count>\n"
@@ -211,6 +215,52 @@ int main(int argc, char* argv[]) {
             return 0;
         }
 
+
+        if (command == "difficulty") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+            std::cout << "Difficulty\n"
+                      << "  current=" << chain.getCurrentDifficulty() << "\n"
+                      << "  next=" << chain.estimateNextDifficulty() << "\n";
+            return 0;
+        }
+
+        if (command == "time") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+            std::cout << "Time\n"
+                      << "  median_time_past=" << chain.getMedianTimePast() << "\n"
+                      << "  next_min_timestamp=" << chain.estimateNextMinimumTimestamp() << "\n";
+            return 0;
+        }
+
+        if (command == "reorgs") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+            std::cout << "Reorg stats\n"
+                      << "  reorg_count=" << chain.getReorgCount() << "\n"
+                      << "  last_reorg_depth=" << chain.getLastReorgDepth() << "\n"
+                      << "  last_fork_height=" << chain.getLastForkHeight() << "\n"
+                      << "  last_fork_hash=" << chain.getLastForkHash() << "\n";
+            return 0;
+        }
+
+        if (command == "reward-estimate") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+            std::cout << "Reward estimate\n"
+                      << "  next_reward=" << std::fixed << std::setprecision(8)
+                      << Transaction::toNOVA(chain.estimateNextMiningReward()) << " NOVA\n";
+            return 0;
+        }
 
         if (command == "fee-estimate") {
             if (argc != 3) {
