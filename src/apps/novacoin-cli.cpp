@@ -22,10 +22,12 @@ void printUsage() {
               << "  novacoin-cli send <from> <to> <amount_nova> [fee_nova]\n"
               << "  novacoin-cli balance <address>\n"
               << "  novacoin-cli summary\n"
+              << "  novacoin-cli status\n"
               << "  novacoin-cli address-stats <address>\n"
               << "  novacoin-cli network-stats\n"
               << "  novacoin-cli mempool-stats\n"
               << "  novacoin-cli mempool [limit]\n"
+              << "  novacoin-cli mempool-ids [limit]\n"
               << "  novacoin-cli difficulty\n"
               << "  novacoin-cli time\n"
               << "  novacoin-cli reorgs\n"
@@ -133,6 +135,24 @@ int main(int argc, char* argv[]) {
             return 0;
         }
 
+        if (command == "status") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+            const auto& chainData = chain.getChain();
+            const std::size_t height = chainData.empty() ? 0 : chainData.back().getIndex();
+            const std::string tipHash = chainData.empty() ? "none" : chainData.back().getHash();
+            std::cout << "Status\n"
+                      << "  height=" << height << "\n"
+                      << "  tip_hash=" << tipHash << "\n"
+                      << "  difficulty=" << chain.getCurrentDifficulty() << "\n"
+                      << "  mempool_size=" << chain.getPendingTransactions().size() << "\n"
+                      << "  total_supply=" << std::fixed << std::setprecision(8)
+                      << Transaction::toNOVA(chain.getTotalSupply()) << " NOVA\n";
+            return 0;
+        }
+
         if (command == "address-stats") {
             if (argc != 3) {
                 printUsage();
@@ -215,6 +235,26 @@ int main(int argc, char* argv[]) {
                           << Transaction::toNOVA(tx.amount) << " NOVA"
                           << " fee=" << Transaction::toNOVA(tx.fee) << " NOVA"
                           << " ts=" << tx.timestamp << "\n";
+            }
+            return 0;
+        }
+
+        if (command == "mempool-ids") {
+            if (argc > 3) {
+                printUsage();
+                return 1;
+            }
+
+            const auto blockTemplate = chain.getPendingTransactionsForBlockTemplate();
+            const std::size_t limit = argc == 3 ? parseSize(argv[2], "limit") : blockTemplate.size();
+            const std::size_t count = std::min(limit, blockTemplate.size());
+
+            std::cout << "mempool_ids=" << blockTemplate.size() << " shown=" << count << "\n";
+            for (std::size_t i = 0; i < count; ++i) {
+                const auto& tx = blockTemplate[i];
+                std::cout << "  #" << (i + 1) << " id=" << tx.id() << " fee=" << std::fixed
+                          << std::setprecision(8) << Transaction::toNOVA(tx.fee) << " NOVA"
+                          << " amount=" << Transaction::toNOVA(tx.amount) << " NOVA\n";
             }
             return 0;
         }
