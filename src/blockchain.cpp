@@ -47,6 +47,26 @@ bool hasNonDecreasingTimestamps(const std::vector<Transaction>& transactions) {
     return true;
 }
 
+void applyBalanceUpdates(const std::vector<Transaction>& transactions,
+                         const std::string& address,
+                         Amount& balance,
+                         const char* debitError,
+                         const char* creditError) {
+    for (const auto& tx : transactions) {
+        if (tx.from == address) {
+            Amount debit = 0;
+            if (!safeAdd(tx.amount, tx.fee, debit) || !safeAdd(balance, -debit, balance)) {
+                throw std::overflow_error(debitError);
+            }
+        }
+        if (tx.to == address) {
+            if (!safeAdd(balance, tx.amount, balance)) {
+                throw std::overflow_error(creditError);
+            }
+        }
+    }
+}
+
 std::size_t boundedEndHeight(std::size_t startHeight, std::size_t maxCount, std::size_t chainSize) {
     const std::size_t remaining = chainSize - startHeight;
     return startHeight + std::min(maxCount, remaining);
@@ -311,21 +331,9 @@ void Blockchain::minePendingTransactions(const std::string& minerAddress) {
 
 Amount Blockchain::getBalance(const std::string& address) const {
     Amount balance = 0;
-
     for (const auto& block : chain_) {
-        for (const auto& tx : block.getTransactions()) {
-            if (tx.from == address) {
-                Amount debit = 0;
-                if (!safeAdd(tx.amount, tx.fee, debit) || !safeAdd(balance, -debit, balance)) {
-                    throw std::overflow_error("Overflow balance debit.");
-                }
-            }
-            if (tx.to == address) {
-                if (!safeAdd(balance, tx.amount, balance)) {
-                    throw std::overflow_error("Overflow balance credit.");
-                }
-            }
-        }
+        applyBalanceUpdates(block.getTransactions(), address, balance, "Overflow balance debit.",
+                            "Overflow balance credit.");
     }
 
     return balance;
@@ -333,20 +341,8 @@ Amount Blockchain::getBalance(const std::string& address) const {
 
 Amount Blockchain::getAvailableBalance(const std::string& address) const {
     Amount balance = getBalance(address);
-
-    for (const auto& tx : pendingTransactions_) {
-        if (tx.from == address) {
-            Amount debit = 0;
-            if (!safeAdd(tx.amount, tx.fee, debit) || !safeAdd(balance, -debit, balance)) {
-                throw std::overflow_error("Overflow pending debit.");
-            }
-        }
-        if (tx.to == address) {
-            if (!safeAdd(balance, tx.amount, balance)) {
-                throw std::overflow_error("Overflow pending credit.");
-            }
-        }
-    }
+    applyBalanceUpdates(pendingTransactions_, address, balance, "Overflow pending debit.",
+                        "Overflow pending credit.");
 
     return balance;
 }
