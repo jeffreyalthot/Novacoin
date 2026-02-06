@@ -22,6 +22,9 @@ void printUsage() {
               << "  novacoin-wallet wallet-wif <wallet.dat> <index> [passphrase]\n"
               << "  novacoin-wallet wallet-address <wallet.dat> <index> [passphrase]\n"
               << "  novacoin-wallet wallet-derive-address <wallet.dat> <index> [passphrase]\n"
+              << "  novacoin-wallet wallet-public-key <wallet.dat> <index> [passphrase]\n"
+              << "  novacoin-wallet wallet-script <wallet.dat> <index> [passphrase]\n"
+              << "  novacoin-wallet wallet-validate <wallet.dat> [passphrase]\n"
               << "  novacoin-wallet wallet-ckey <wallet.dat> [passphrase]\n"
               << "  novacoin-wallet wallet-from-wif <wif>\n"
               << "  novacoin-wallet <address>\n";
@@ -165,6 +168,40 @@ int main(int argc, char* argv[]) {
                 auto walletStore = wallet::WalletStore::load(path, passphrase);
                 std::cout << "address=" << walletStore.deriveAddress(static_cast<std::uint32_t>(index), passphrase)
                           << "\n";
+                return 0;
+            }
+
+            if (command == "wallet-public-key" || command == "wallet-script") {
+                if (argc < 4 || argc > 5) {
+                    printUsage();
+                    return 1;
+                }
+                const std::string path = requireArg(argv[2], "Chemin wallet.dat manquant.");
+                std::size_t index = parseSize(requireArg(argv[3], "Index manquant."), "index");
+                std::string passphrase = argc == 5 ? argv[4] : "";
+                auto walletStore = wallet::WalletStore::load(path, passphrase);
+                const std::string privateKeyHex = walletStore.derivePrivateKeyHex(static_cast<std::uint32_t>(index),
+                                                                                   passphrase);
+                const std::string publicKey = walletStore.privateKeyHexToPublicKey(privateKeyHex);
+                if (command == "wallet-public-key") {
+                    std::cout << "public_key_hex=" << publicKey << "\n";
+                } else {
+                    std::cout << "public_key_script=" << walletStore.publicKeyToPublicKeyScript(publicKey) << "\n";
+                }
+                return 0;
+            }
+
+            if (command == "wallet-validate") {
+                if (argc < 3 || argc > 4) {
+                    printUsage();
+                    return 1;
+                }
+                const std::string path = requireArg(argv[2], "Chemin wallet.dat manquant.");
+                std::string passphrase = argc == 4 ? argv[3] : "";
+                auto walletStore = wallet::WalletStore::load(path, passphrase);
+                std::cout << "wallet_ok=true\n"
+                          << "ckey_len=" << walletStore.ckey().size() << "\n"
+                          << "ckey_ts=" << walletStore.ckeyTimestamp() << "\n";
                 return 0;
             }
 
