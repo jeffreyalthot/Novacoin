@@ -21,6 +21,8 @@ void printUsage() {
               << "  novacoin-tx id <serialized_tx>\n"
               << "  novacoin-tx summary <serialized_tx>\n"
               << "  novacoin-tx amounts <serialized_tx>\n"
+              << "  novacoin-tx fee <serialized_tx>\n"
+              << "  novacoin-tx total <serialized_tx>\n"
               << "  novacoin-tx <from> <to> <amount_nova> [fee_nova]\n\n"
               << "Example:\n"
               << "  novacoin-tx create alice bob 1.25 0.10\n";
@@ -76,6 +78,19 @@ void printTransactionAmounts(const Transaction& tx) {
               << "  amount_atoms=" << tx.amount << "\n"
               << "  fee_atoms=" << tx.fee << "\n"
               << "  total_atoms=" << total << "\n";
+}
+
+void printTransactionFee(const Transaction& tx) {
+    std::cout << "Fee\n"
+              << "  fee_atoms=" << tx.fee << "\n"
+              << "  fee_nova=" << std::fixed << std::setprecision(8) << Transaction::toNOVA(tx.fee) << "\n";
+}
+
+void printTransactionTotal(const Transaction& tx) {
+    const Amount total = tx.amount + tx.fee;
+    std::cout << "Total\n"
+              << "  total_atoms=" << total << "\n"
+              << "  total_nova=" << std::fixed << std::setprecision(8) << Transaction::toNOVA(total) << "\n";
 }
 } // namespace
 
@@ -136,6 +151,26 @@ int main(int argc, char* argv[]) {
             }
             const Transaction tx = Transaction::deserialize(argv[2]);
             printTransactionAmounts(tx);
+            return 0;
+        }
+
+        if (command == "fee") {
+            if (argc != 3) {
+                printUsage();
+                return 1;
+            }
+            const Transaction tx = Transaction::deserialize(argv[2]);
+            printTransactionFee(tx);
+            return 0;
+        }
+
+        if (command == "total") {
+            if (argc != 3) {
+                printUsage();
+                return 1;
+            }
+            const Transaction tx = Transaction::deserialize(argv[2]);
+            printTransactionTotal(tx);
             return 0;
         }
 

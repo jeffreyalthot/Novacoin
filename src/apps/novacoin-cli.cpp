@@ -48,7 +48,9 @@ void printUsage() {
               << "  novacoin-cli monetary [height]\n"
               << "  novacoin-cli supply [height]\n"
               << "  novacoin-cli params\n"
-              << "  novacoin-cli supply-audit <start_height> <max_count>\n";
+              << "  novacoin-cli supply-audit <start_height> <max_count>\n"
+              << "  novacoin-cli height\n"
+              << "  novacoin-cli tip\n";
 }
 
 double parseDouble(const std::string& raw, const std::string& field) {
@@ -690,6 +692,34 @@ int main(int argc, char* argv[]) {
                           << " cap_ok=" << (entry.supplyWithinCap ? "yes" : "no")
                           << " hash=" << entry.hash << "\n";
             }
+            return 0;
+        }
+
+        if (command == "height") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+            const std::size_t height = chain.getBlockCount() > 0 ? chain.getBlockCount() - 1 : 0;
+            std::cout << "height=" << height << "\n";
+            return 0;
+        }
+
+        if (command == "tip") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+            const auto& chainData = chain.getChain();
+            if (chainData.empty()) {
+                std::cout << "tip=none\n";
+                return 0;
+            }
+            const auto& tip = chainData.back();
+            std::cout << "tip\n"
+                      << "  height=" << tip.getIndex() << "\n"
+                      << "  hash=" << tip.getHash() << "\n"
+                      << "  prev_hash=" << tip.getPreviousHash() << "\n";
             return 0;
         }
 

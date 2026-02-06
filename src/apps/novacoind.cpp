@@ -22,7 +22,9 @@ void printUsage() {
               << "  novacoind difficulty\n"
               << "  novacoind supply\n"
               << "  novacoind consensus\n"
-              << "  novacoind reorgs\n";
+              << "  novacoind reorgs\n"
+              << "  novacoind height\n"
+              << "  novacoind params\n";
 }
 
 double parseDouble(const std::string& raw, const std::string& field) {
@@ -173,6 +175,42 @@ int main(int argc, char* argv[]) {
                       << "  last_reorg_depth=" << daemonChain.getLastReorgDepth() << "\n"
                       << "  last_fork_height=" << daemonChain.getLastForkHeight() << "\n"
                       << "  last_fork_hash=" << daemonChain.getLastForkHash() << "\n";
+            return 0;
+        }
+
+        if (command == "height") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+            const auto& chainData = daemonChain.getChain();
+            if (chainData.empty()) {
+                std::cout << "height=0\n";
+                return 0;
+            }
+            const auto& tip = chainData.back();
+            std::cout << "height=" << tip.getIndex() << "\n"
+                      << "hash=" << tip.getHash() << "\n";
+            return 0;
+        }
+
+        if (command == "params") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+            std::cout << "params\n"
+                      << "  max_supply=" << std::fixed << std::setprecision(8)
+                      << Transaction::toNOVA(Blockchain::kMaxSupply) << " NOVA\n"
+                      << "  halving_interval=" << Blockchain::kHalvingInterval << "\n"
+                      << "  target_block_time_s=" << Blockchain::kTargetBlockTimeSeconds << "\n"
+                      << "  max_future_drift_s=" << Blockchain::kMaxFutureDriftSeconds << "\n"
+                      << "  difficulty_adjust_interval=" << Blockchain::kDifficultyAdjustmentInterval << "\n"
+                      << "  min_difficulty=" << Blockchain::kMinDifficulty << "\n"
+                      << "  max_difficulty=" << Blockchain::kMaxDifficulty << "\n"
+                      << "  mempool_expiry_s=" << Blockchain::kMempoolExpirySeconds << "\n"
+                      << "  max_mempool_txs=" << Blockchain::kMaxMempoolTransactions << "\n"
+                      << "  min_relay_fee=" << Transaction::toNOVA(Blockchain::kMinRelayFee) << " NOVA\n";
             return 0;
         }
 
