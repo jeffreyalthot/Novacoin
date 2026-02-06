@@ -232,4 +232,68 @@ Ce document propose une **roadmap exhaustive** pour anticiper le maximum d'amél
 
 ---
 
+## 21) Compléments à intégrer (pour compléter la liste)
+
+### Gouvernance & spécifications
+- **Paramètres de réseau** formalisés (magic bytes, ports, versions minimales).
+- **Signalement d’upgrade** (BIP9-like ou équivalent) + calendrier de déploiement.
+- **Politique de compatibilité** des APIs/CLI (breaking changes, versioning).
+
+### Consensus & validation
+- **Protection time-warp** (règles anti-manipulation des timestamps).
+- **Vecteurs de test consensus** (blocs/tx invalides ciblés).
+- **Règles de script** documentées (opcodes autorisés, limites, erreurs).
+
+### Économie & émission
+- **Politique de genesis** (distribution initiale, premine, lockups).
+- **Paramètres de halving** verrouillés + simulation d’offre complète.
+- **Audits d’offre** reproductibles (script/outil publié).
+
+### Réseau & P2P
+- **Versioning des messages** + compatibilité ascendante.
+- **Protection privacy** (options Tor/I2P, addr relay policy).
+- **Gestion d’éclipses avancée** (anchors, peer rotation, diversity quotas).
+
+### Stockage & persistance
+- **Migrations de DB** documentées (versioning, rollback).
+- **Vérification d’intégrité** (checksums, fsck-like).
+- **Journalisation des corruptions** + procédures de recovery.
+
+### Wallet & UX
+- **Standards d’adresses** (bech32/legacy, checksums).
+- **Gestion multi-comptes** + labels/metadata.
+- **Prévention erreurs** (confirmation d’adresse, anti-typo).
+
+### API & RPC
+- **Pagination & filtres** uniformes (mempool, blocks, txs).
+- **Rate limiting côté serveur** + quotas par client.
+- **Webhooks/WebSocket** optionnels pour événements temps réel.
+
+### Observabilité & logs
+- **Rotation des logs** + rétention configurables.
+- **Sanitization des logs** (données sensibles, clés).
+- **Profiling continu** (pprof/trace) en environnement debug.
+
+### Sécurité
+- **Supply-chain security** (SBOM, scans dépendances).
+- **Hardening runtime** (seccomp, sandboxing options).
+- **Playbooks incidents** sécurité (procédures et délais).
+
+### Tests & QA
+- **Tests de non-régression** post-incident.
+- **Tests déterministes** (seeded fuzzing, timings).
+- **Simulations réseau** (latence, partition, churn).
+
+### Release & distribution
+- **Infrastructure de signature** (HSM/clé hors-ligne).
+- **Vérification d’artefacts** (checksums, attestations).
+- **Canal de updates** (release channels, RC/beta).
+
+### Documentation & écosystème
+- **Guide d’exploitation** (SLO, monitoring, backup).
+- **Guide intégration exchanges** (RPC, sécurité, bonnes pratiques).
+- **Spec formats** (bloc/tx) publiées et versionnées.
+
+---
+
 Ce document est amené à évoluer avec l'avancement du projet.
