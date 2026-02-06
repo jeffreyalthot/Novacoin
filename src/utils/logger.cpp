@@ -23,27 +23,28 @@ const char* toString(LogLevel level) {
 Logger::Logger(std::size_t maxEntries) : maxEntries_(std::max<std::size_t>(1, maxEntries)) {
 }
 
-void Logger::log(LogLevel level, const std::string& component, const std::string& message) {
+void Logger::log(LogLevel level, std::string_view component, std::string_view message) {
     if (entries_.size() == maxEntries_) {
         entries_.pop_front();
     }
 
-    entries_.push_back(LogEntry{nowSeconds(), level, component, message});
+    entries_.push_back(
+        LogEntry{nowSeconds(), level, std::string(component), std::string(message)});
 }
 
-void Logger::debug(const std::string& component, const std::string& message) {
+void Logger::debug(std::string_view component, std::string_view message) {
     log(LogLevel::Debug, component, message);
 }
 
-void Logger::info(const std::string& component, const std::string& message) {
+void Logger::info(std::string_view component, std::string_view message) {
     log(LogLevel::Info, component, message);
 }
 
-void Logger::warning(const std::string& component, const std::string& message) {
+void Logger::warning(std::string_view component, std::string_view message) {
     log(LogLevel::Warning, component, message);
 }
 
-void Logger::error(const std::string& component, const std::string& message) {
+void Logger::error(std::string_view component, std::string_view message) {
     log(LogLevel::Error, component, message);
 }
 
