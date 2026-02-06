@@ -6,6 +6,7 @@
 #include <iomanip>
 #include <iostream>
 #include <string>
+#include <vector>
 
 namespace {
 void printUsage() {
@@ -20,6 +21,8 @@ void printUsage() {
               << "  novacoin-wallet wallet-derive <wallet.dat> <index> [passphrase]\n"
               << "  novacoin-wallet wallet-wif <wallet.dat> <index> [passphrase]\n"
               << "  novacoin-wallet wallet-address <wallet.dat> <index> [passphrase]\n"
+              << "  novacoin-wallet wallet-derive-address <wallet.dat> <index> [passphrase]\n"
+              << "  novacoin-wallet wallet-ckey <wallet.dat> [passphrase]\n"
               << "  novacoin-wallet wallet-from-wif <wif>\n"
               << "  novacoin-wallet <address>\n";
 }
@@ -29,6 +32,17 @@ std::string requireArg(const char* arg, const std::string& message) {
         throw std::invalid_argument(message);
     }
     return arg;
+}
+
+std::string bytesToHex(const std::vector<std::uint8_t>& bytes) {
+    static constexpr char kHexDigits[] = "0123456789abcdef";
+    std::string out;
+    out.reserve(bytes.size() * 2);
+    for (auto value : bytes) {
+        out.push_back(kHexDigits[(value >> 4) & 0x0F]);
+        out.push_back(kHexDigits[value & 0x0F]);
+    }
+    return out;
 }
 
 void printBalance(const Blockchain& chain, const std::string& address) {
@@ -137,6 +151,35 @@ int main(int argc, char* argv[]) {
                 std::string passphrase = argc == 4 ? argv[3] : "";
                 auto walletStore = wallet::WalletStore::load(path, passphrase);
                 std::cout << "master_key_hex=" << walletStore.decryptMasterKeyHex(passphrase) << "\n";
+                return 0;
+            }
+
+            if (command == "wallet-derive-address") {
+                if (argc < 4 || argc > 5) {
+                    printUsage();
+                    return 1;
+                }
+                const std::string path = requireArg(argv[2], "Chemin wallet.dat manquant.");
+                std::size_t index = parseSize(requireArg(argv[3], "Index manquant."), "index");
+                std::string passphrase = argc == 5 ? argv[4] : "";
+                auto walletStore = wallet::WalletStore::load(path, passphrase);
+                std::cout << "address=" << walletStore.deriveAddress(static_cast<std::uint32_t>(index), passphrase)
+                          << "\n";
+                return 0;
+            }
+
+            if (command == "wallet-ckey") {
+                if (argc < 3 || argc > 4) {
+                    printUsage();
+                    return 1;
+                }
+                const std::string path = requireArg(argv[2], "Chemin wallet.dat manquant.");
+                std::string passphrase = argc == 4 ? argv[3] : "";
+                auto walletStore = wallet::WalletStore::load(path, passphrase);
+                const auto& ckey = walletStore.ckey();
+                std::cout << "ckey_hex=" << bytesToHex(ckey) << "\n"
+                          << "ckey_len=" << ckey.size() << "\n"
+                          << "ckey_ts=" << walletStore.ckeyTimestamp() << "\n";
                 return 0;
             }
 
