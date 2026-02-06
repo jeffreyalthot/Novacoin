@@ -9,7 +9,7 @@ constexpr int levelValue(LogLevel level) {
     return static_cast<int>(level);
 }
 
-const char* toString(LogLevel level) {
+constexpr std::string_view toString(LogLevel level) {
     switch (level) {
         case LogLevel::Debug:
             return "DEBUG";
@@ -64,10 +64,7 @@ void Logger::error(std::string_view component, std::string_view message) {
 
 std::vector<LogEntry> Logger::entries() const {
     std::lock_guard<std::mutex> guard(mutex_);
-    std::vector<LogEntry> snapshot;
-    snapshot.reserve(entries_.size());
-    snapshot.assign(entries_.begin(), entries_.end());
-    return snapshot;
+    return {entries_.begin(), entries_.end()};
 }
 
 std::vector<LogEntry> Logger::entries(std::size_t limit) const {
@@ -83,10 +80,7 @@ std::vector<LogEntry> Logger::entries(std::size_t limit) const {
         start = std::next(entries_.begin(), static_cast<std::ptrdiff_t>(total - count));
     }
 
-    std::vector<LogEntry> snapshot;
-    snapshot.reserve(count);
-    snapshot.assign(start, entries_.end());
-    return snapshot;
+    return {start, entries_.end()};
 }
 
 std::size_t Logger::size() const {
@@ -129,13 +123,13 @@ std::size_t Logger::maxEntries() const {
 
 std::string Logger::format(const LogEntry& entry) {
     const std::string timestamp = std::to_string(entry.timestamp);
-    const std::string level = toString(entry.level);
+    const std::string_view level = toString(entry.level);
     std::string formatted;
     formatted.reserve(timestamp.size() + level.size() + entry.component.size() + entry.message.size() + 8);
     formatted.append("[");
     formatted.append(timestamp);
     formatted.append("] [");
-    formatted.append(level);
+    formatted.append(level.data(), level.size());
     formatted.append("] [");
     formatted.append(entry.component);
     formatted.append("] ");
