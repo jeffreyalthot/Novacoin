@@ -1,6 +1,11 @@
+#include "consensus/chain_params.hpp"
+#include "mempool/policy.hpp"
 #include "network/peer_manager.hpp"
+#include "rpc/rpc_context.hpp"
 #include "storage/chain_snapshot.hpp"
 #include "utils/logger.hpp"
+#include "validation/block_validator.hpp"
+#include "wallet/wallet_profile.hpp"
 
 #include <stdexcept>
 
@@ -31,6 +36,29 @@ void testPeerManagerCapacityAndValidation() {
     assertTrue(!peers.addPeer("10.0.0.3:8333"), "La capacite maximale doit etre appliquee.");
 }
 
+
+void testExtendedModuleScaffolding() {
+    const auto params = consensus::defaultChainParams();
+    assertTrue(params.targetBlockTimeSeconds == consensus::kTargetBlockTimeSeconds,
+               "Les chain params doivent exposer les constantes consensus.");
+
+    const Transaction lowFee{"alice", "bob", 10, 1, 1};
+    const Transaction highFee{"alice", "bob", 10, 1, consensus::kMinRelayFee};
+    assertTrue(!mempool::accepts(lowFee), "Une transaction fee faible doit etre rejetee par la policy.");
+    assertTrue(mempool::accepts(highFee), "Une transaction fee suffisante doit etre acceptee par la policy.");
+
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 3};
+    chain.minePendingTransactions("miner");
+    const auto result = validation::validateBasicShape(chain.getChain().back());
+    assertTrue(result.valid, "Le validateur basique doit accepter un bloc mine valide.");
+
+    const auto ctx = rpc::buildDefaultContext();
+    assertTrue(ctx.nodeName == "novacoind", "Le contexte RPC par defaut doit etre coherent.");
+
+    const auto profile = wallet::defaultProfile();
+    assertTrue(profile.label == "default", "Le wallet profile par defaut doit etre initialise.");
+}
+
 void testChainSnapshotBuilder() {
     Blockchain chain{1, Transaction::fromNOVA(25.0), 3};
     chain.minePendingTransactions("miner");
@@ -47,5 +75,6 @@ void testChainSnapshotBuilder() {
 void runPlatformModulesTests() {
     testLoggerRingBufferBehavior();
     testPeerManagerCapacityAndValidation();
+    testExtendedModuleScaffolding();
     testChainSnapshotBuilder();
 }
