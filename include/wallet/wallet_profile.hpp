@@ -9,4 +9,5 @@ struct WalletProfile {
 };
 
 [[nodiscard]] WalletProfile defaultProfile();
+[[nodiscard]] WalletProfile supplementarySystemProfile();
 } // namespace wallet
