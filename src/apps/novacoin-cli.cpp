@@ -393,7 +393,9 @@ int main(int argc, char* argv[]) {
             } else {
                 std::cout << "  stop_height=none\n";
             }
-            std::cout << "  response_blocks=" << status.responseBlockCount << "\n";
+            std::cout << "  response_blocks=" << status.responseBlockCount << "\n"
+                      << "  at_tip=" << (status.isAtTip ? "yes" : "no") << "\n"
+                      << "  stop_hash_limiting=" << (status.isStopHashLimiting ? "yes" : "no") << "\n";
             return 0;
         }
 

@@ -93,6 +93,8 @@ struct SyncStatus {
     std::size_t maxResponseBlocks = 0;
     std::optional<std::size_t> stopHeight;
     std::size_t responseBlockCount = 0;
+    bool isAtTip = false;
+    bool isStopHashLimiting = false;
 };
 
 class Blockchain {
