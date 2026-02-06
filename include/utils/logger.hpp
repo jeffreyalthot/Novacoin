@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <deque>
+#include <mutex>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -45,6 +46,7 @@ private:
     std::size_t maxEntries_ = 500;
     std::deque<LogEntry> entries_;
     LogLevel minLevel_ = LogLevel::Debug;
+    mutable std::mutex mutex_;
 
     static std::uint64_t nowSeconds();
 };

@@ -32,6 +32,7 @@ Logger::Logger(std::size_t maxEntries) : maxEntries_(std::max<std::size_t>(1, ma
 }
 
 void Logger::log(LogLevel level, std::string_view component, std::string_view message) {
+    std::lock_guard<std::mutex> guard(mutex_);
     if (!shouldLog(level, minLevel_)) {
         return;
     }
@@ -61,26 +62,32 @@ void Logger::error(std::string_view component, std::string_view message) {
 }
 
 std::vector<LogEntry> Logger::entries() const {
+    std::lock_guard<std::mutex> guard(mutex_);
     return std::vector<LogEntry>(entries_.begin(), entries_.end());
 }
 
 std::size_t Logger::size() const {
+    std::lock_guard<std::mutex> guard(mutex_);
     return entries_.size();
 }
 
 bool Logger::empty() const {
+    std::lock_guard<std::mutex> guard(mutex_);
     return entries_.empty();
 }
 
 void Logger::clear() {
+    std::lock_guard<std::mutex> guard(mutex_);
     entries_.clear();
 }
 
 void Logger::setMinLevel(LogLevel level) {
+    std::lock_guard<std::mutex> guard(mutex_);
     minLevel_ = level;
 }
 
 LogLevel Logger::minLevel() const {
+    std::lock_guard<std::mutex> guard(mutex_);
     return minLevel_;
 }
 
