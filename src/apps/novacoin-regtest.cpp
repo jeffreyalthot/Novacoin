@@ -5,6 +5,7 @@
 #include <exception>
 #include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -20,7 +21,8 @@ void printUsage() {
               << "  novacoin-regtest balances\n"
               << "  novacoin-regtest mine <miner> [count]\n"
               << "  novacoin-regtest send <from> <to> <amount_nova> [fee_nova]\n"
-              << "  novacoin-regtest history <address> [limit]\n";
+              << "  novacoin-regtest history <address> [limit]\n"
+              << "  novacoin-regtest debug [recent_blocks]\n";
 }
 
 double parseDouble(const std::string& raw, const std::string& field) {
@@ -41,20 +43,74 @@ std::size_t parseSize(const std::string& raw, const std::string& field) {
     return static_cast<std::size_t>(value);
 }
 
+std::string formatAmount(Amount amount) {
+    std::ostringstream out;
+    out << std::fixed << std::setprecision(8) << Transaction::toNOVA(amount);
+    return out.str();
+}
+
 void printBalances(const Blockchain& chain, const std::vector<std::string>& addresses) {
     for (const auto& address : addresses) {
-        std::cout << "  " << address << ": " << std::fixed << std::setprecision(8)
-                  << Transaction::toNOVA(chain.getBalance(address)) << " NOVA\n";
+        std::cout << "  " << address << ": " << formatAmount(chain.getBalance(address)) << " NOVA\n";
     }
 }
 
 void printSummary(const Blockchain& regtest, const std::vector<std::string>& addresses) {
     std::cout << "regtest summary\n"
               << "  blocks: " << regtest.getBlockCount() << "\n"
-              << "  supply: " << std::fixed << std::setprecision(8)
-              << Transaction::toNOVA(regtest.getTotalSupply()) << " NOVA\n";
+              << "  supply: " << formatAmount(regtest.getTotalSupply()) << " NOVA\n";
     printBalances(regtest, addresses);
     std::cout << "  valid: " << std::boolalpha << regtest.isValid() << "\n";
+}
+
+void printNetworkStats(const Blockchain& regtest) {
+    const auto stats = regtest.getNetworkStats();
+    std::cout << "network stats\n"
+              << "  blocks=" << stats.blockCount << "\n"
+              << "  user_txs=" << stats.userTransactionCount << "\n"
+              << "  coinbase_txs=" << stats.coinbaseTransactionCount << "\n"
+              << "  pending_txs=" << stats.pendingTransactionCount << "\n"
+              << "  total_transferred=" << formatAmount(stats.totalTransferred) << " NOVA\n"
+              << "  total_fees=" << formatAmount(stats.totalFeesPaid) << " NOVA\n"
+              << "  total_mined=" << formatAmount(stats.totalMinedRewards) << " NOVA\n"
+              << "  median_user_tx=" << formatAmount(stats.medianUserTransactionAmount) << " NOVA\n";
+}
+
+void printMempoolStats(const Blockchain& regtest) {
+    const auto stats = regtest.getMempoolStats();
+    std::cout << "mempool stats\n"
+              << "  count=" << stats.transactionCount << "\n";
+    if (stats.transactionCount == 0) {
+        std::cout << "  (mempool vide)\n";
+        return;
+    }
+    std::cout << "  total_amount=" << formatAmount(stats.totalAmount) << " NOVA\n"
+              << "  total_fees=" << formatAmount(stats.totalFees) << " NOVA\n"
+              << "  min_fee=" << formatAmount(stats.minFee) << " NOVA\n"
+              << "  max_fee=" << formatAmount(stats.maxFee) << " NOVA\n"
+              << "  median_fee=" << formatAmount(stats.medianFee) << " NOVA\n"
+              << "  oldest_ts=" << stats.oldestTimestamp << "\n"
+              << "  newest_ts=" << stats.newestTimestamp << "\n"
+              << "  min_age_s=" << stats.minAgeSeconds << "\n"
+              << "  max_age_s=" << stats.maxAgeSeconds << "\n"
+              << "  median_age_s=" << stats.medianAgeSeconds << "\n";
+}
+
+void printRecentBlocks(const Blockchain& regtest, std::size_t count) {
+    const auto blocks = regtest.getRecentBlockSummaries(count);
+    std::cout << "recent blocks (" << blocks.size() << ")\n";
+    if (blocks.empty()) {
+        std::cout << "  (aucun bloc)\n";
+        return;
+    }
+    for (const auto& block : blocks) {
+        std::cout << "  #" << block.index
+                  << " txs=" << block.transactionCount
+                  << " user_txs=" << block.userTransactionCount
+                  << " fees=" << formatAmount(block.totalFees) << " NOVA"
+                  << " diff=" << block.difficulty
+                  << " ts=" << block.timestamp << "\n";
+    }
 }
 
 Blockchain seedRegtest() {
@@ -115,8 +171,7 @@ int main(int argc, char* argv[]) {
             }
             std::cout << "mined " << count << " blocks\n"
                       << "  height: " << regtest.getBlockCount() - 1 << "\n"
-                      << "  supply: " << std::fixed << std::setprecision(8)
-                      << Transaction::toNOVA(regtest.getTotalSupply()) << " NOVA\n";
+                      << "  supply: " << formatAmount(regtest.getTotalSupply()) << " NOVA\n";
             return 0;
         }
 
@@ -153,9 +208,21 @@ int main(int argc, char* argv[]) {
             for (std::size_t i = 0; i < history.size(); ++i) {
                 const auto& entry = history[i];
                 std::cout << "  #" << (i + 1) << " id=" << entry.tx.id()
-                          << " amount=" << std::fixed << std::setprecision(8)
-                          << Transaction::toNOVA(entry.tx.amount) << " NOVA\n";
+                          << " amount=" << formatAmount(entry.tx.amount) << " NOVA\n";
             }
+            return 0;
+        }
+
+        if (command == "debug") {
+            if (argc > 3) {
+                printUsage();
+                return 1;
+            }
+            const std::size_t recentBlocks = argc == 3 ? parseSize(argv[2], "recent_blocks") : 5;
+            printSummary(regtest, addresses);
+            printNetworkStats(regtest);
+            printMempoolStats(regtest);
+            printRecentBlocks(regtest, recentBlocks);
             return 0;
         }
 
