@@ -29,6 +29,7 @@ void printUsage() {
               << "  novacoin-cli network-stats\n"
               << "  novacoin-cli mempool-stats\n"
               << "  novacoin-cli mempool-summary\n"
+              << "  novacoin-cli mempool-count\n"
               << "  novacoin-cli mempool [limit]\n"
               << "  novacoin-cli mempool-ids [limit]\n"
               << "  novacoin-cli mempool-fees\n"
@@ -55,6 +56,7 @@ void printUsage() {
               << "  novacoin-cli consensus\n"
               << "  novacoin-cli monetary [height]\n"
               << "  novacoin-cli supply [height]\n"
+              << "  novacoin-cli supply-remaining\n"
               << "  novacoin-cli params\n"
               << "  novacoin-cli supply-audit <start_height> <max_count>\n"
               << "  novacoin-cli chain-health\n"
@@ -239,6 +241,17 @@ int main(int argc, char* argv[]) {
                       << Transaction::toNOVA(stats.totalAmount) << " NOVA\n"
                       << "  total_fees=" << Transaction::toNOVA(stats.totalFees) << " NOVA\n"
                       << "  total_including_fees=" << Transaction::toNOVA(total) << " NOVA\n";
+            return 0;
+        }
+
+        if (command == "mempool-count") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+
+            const auto stats = chain.getMempoolStats();
+            std::cout << "mempool_count=" << stats.transactionCount << "\n";
             return 0;
         }
 
@@ -759,6 +772,25 @@ int main(int argc, char* argv[]) {
                       << "  estimated_supply=" << std::fixed << std::setprecision(8)
                       << Transaction::toNOVA(estimated) << " NOVA\n"
                       << "  current_supply=" << Transaction::toNOVA(chain.getTotalSupply()) << " NOVA\n"
+                      << "  max_supply=" << Transaction::toNOVA(Blockchain::kMaxSupply) << " NOVA\n";
+            return 0;
+        }
+
+        if (command == "supply-remaining") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+
+            const Amount total = chain.getTotalSupply();
+            Amount remaining = Blockchain::kMaxSupply - total;
+            if (remaining < 0) {
+                remaining = 0;
+            }
+            std::cout << "Supply remaining\n"
+                      << "  current_supply=" << std::fixed << std::setprecision(8)
+                      << Transaction::toNOVA(total) << " NOVA\n"
+                      << "  remaining_supply=" << Transaction::toNOVA(remaining) << " NOVA\n"
                       << "  max_supply=" << Transaction::toNOVA(Blockchain::kMaxSupply) << " NOVA\n";
             return 0;
         }

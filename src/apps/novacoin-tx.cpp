@@ -28,8 +28,10 @@ void printUsage() {
               << "  novacoin-tx total-nova <serialized_tx>\n"
               << "  novacoin-tx amounts <serialized_tx>\n"
               << "  novacoin-tx fee <serialized_tx>\n"
+              << "  novacoin-tx fee-rate <serialized_tx>\n"
               << "  novacoin-tx total <serialized_tx>\n"
               << "  novacoin-tx timestamp <serialized_tx>\n"
+              << "  novacoin-tx serialize <from> <to> <amount_nova> [fee_nova]\n"
               << "  novacoin-tx <from> <to> <amount_nova> [fee_nova]\n\n"
               << "Example:\n"
               << "  novacoin-tx create alice bob 1.25 0.10\n";
@@ -114,6 +116,15 @@ void printTransactionFee(const Transaction& tx) {
     std::cout << "Fee\n"
               << "  fee_atoms=" << tx.fee << "\n"
               << "  fee_nova=" << std::fixed << std::setprecision(8) << Transaction::toNOVA(tx.fee) << "\n";
+}
+
+void printTransactionFeeRate(const Transaction& tx) {
+    const std::size_t size = tx.serialize().size();
+    const double rate = size == 0 ? 0.0 : static_cast<double>(tx.fee) / static_cast<double>(size);
+    std::cout << "Fee rate\n"
+              << "  size_bytes=" << size << "\n"
+              << "  fee_atoms=" << tx.fee << "\n"
+              << "  fee_per_byte_atoms=" << std::fixed << std::setprecision(8) << rate << "\n";
 }
 
 void printTransactionTotal(const Transaction& tx) {
@@ -259,6 +270,16 @@ int main(int argc, char* argv[]) {
             return 0;
         }
 
+        if (command == "fee-rate") {
+            if (argc != 3) {
+                printUsage();
+                return 1;
+            }
+            const Transaction tx = Transaction::deserialize(argv[2]);
+            printTransactionFeeRate(tx);
+            return 0;
+        }
+
         if (command == "total") {
             if (argc != 3) {
                 printUsage();
@@ -276,6 +297,17 @@ int main(int argc, char* argv[]) {
             }
             const Transaction tx = Transaction::deserialize(argv[2]);
             printTransactionTimestamp(tx);
+            return 0;
+        }
+
+        if (command == "serialize") {
+            if (argc < 5 || argc > 6) {
+                printUsage();
+                return 1;
+            }
+            const std::string feeRaw = argc == 6 ? argv[5] : "";
+            const Transaction tx = buildTransaction(argv[2], argv[3], argv[4], feeRaw);
+            std::cout << tx.serialize() << "\n";
             return 0;
         }
 
