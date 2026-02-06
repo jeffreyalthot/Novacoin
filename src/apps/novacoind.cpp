@@ -30,6 +30,7 @@ void printUsage() {
               << "  novacoind monetary [height]\n"
               << "  novacoind supply-audit <start_height> <max_count>\n"
               << "  novacoind consensus\n"
+              << "  novacoind work\n"
               << "  novacoind reorgs\n"
               << "  novacoind chain-health\n"
               << "  novacoind height\n"
@@ -321,6 +322,17 @@ int main(int argc, char* argv[]) {
                       << "  next_min_timestamp=" << daemonChain.estimateNextMinimumTimestamp() << "\n"
                       << "  next_reward=" << std::fixed << std::setprecision(8)
                       << Transaction::toNOVA(daemonChain.estimateNextMiningReward()) << " NOVA\n";
+            return 0;
+        }
+
+        if (command == "work") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+            std::cout << "work\n"
+                      << "  cumulative_work=" << daemonChain.getCumulativeWork() << "\n"
+                      << "  height=" << daemonChain.getBlockCount() - 1 << "\n";
             return 0;
         }
 

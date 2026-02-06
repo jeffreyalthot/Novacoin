@@ -46,10 +46,10 @@ Plusieurs sous-dossiers de cette structure contiennent désormais un `README.md`
 Le projet fournit maintenant plusieurs binaires cohérents avec une future architecture multi-composants :
 
 - `novacoin` : démonstration principale du noyau blockchain.
-- `novacoind` : simulation d'un nœud daemon (status, minage, soumission de transactions, mempool, difficulté).
-- `novacoin-cli` : commandes de base (`mine`, `send`, `balance`, `summary`) + observabilite locale (`address-stats`, `mempool-stats`, `top`, `consensus`, `difficulty`, `time`, `reorgs`, `reward-estimate`) + exploration transactionnelle (`tx`, `history`) + outils de sync headers-first (`headers`, `locator`, `headers-sync`, `headers-sync-stop`, `blocks-sync`, `blocks-sync-stop`, `sync-status`, `block`, `blocks`).
-- `novacoin-wallet` : consultation simple d'un wallet local (balance, history, stats, summary).
-- `novacoin-tx` : construction/inspection d'une transaction (create, decode, id).
+- `novacoind` : simulation d'un nœud daemon (status, minage, soumission de transactions, mempool, difficulté, work).
+- `novacoin-cli` : commandes de base (`mine`, `send`, `balance`, `summary`) + observabilite locale (`address-stats`, `mempool-stats`, `top`, `consensus`, `work`, `difficulty`, `time`, `reorgs`, `reward-estimate`) + exploration transactionnelle (`tx`, `history`) + outils de sync headers-first (`headers`, `locator`, `headers-sync`, `headers-sync-stop`, `blocks-sync`, `blocks-sync-stop`, `sync-status`, `block`, `blocks`).
+- `novacoin-wallet` : consultation simple d'un wallet local (balance, history, stats, summary) + outils de conversion clés (`wallet-wif-from-hex`, `wallet-address-from-hex`).
+- `novacoin-tx` : construction/inspection d'une transaction (create, decode, validate, id).
 - `novacoin-regtest` : scénario de test local déterministe (summary, balances, mine, send, history).
 
 

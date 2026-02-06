@@ -18,6 +18,7 @@ void printUsage() {
     std::cout << "Usage:\n"
               << "  novacoin-tx create <from> <to> <amount_nova> [fee_nova]\n"
               << "  novacoin-tx decode <serialized_tx>\n"
+              << "  novacoin-tx validate <serialized_tx>\n"
               << "  novacoin-tx id <serialized_tx>\n"
               << "  novacoin-tx size <serialized_tx>\n"
               << "  novacoin-tx summary <serialized_tx>\n"
@@ -167,6 +168,18 @@ int main(int argc, char* argv[]) {
             }
             const Transaction tx = Transaction::deserialize(argv[2]);
             printTransactionDetails(tx);
+            return 0;
+        }
+
+        if (command == "validate") {
+            if (argc != 3) {
+                printUsage();
+                return 1;
+            }
+            const Transaction tx = Transaction::deserialize(argv[2]);
+            std::cout << "valid=true\n"
+                      << "  id=" << tx.id() << "\n"
+                      << "  size_bytes=" << tx.serialize().size() << "\n";
             return 0;
         }
 

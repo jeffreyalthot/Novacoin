@@ -8,10 +8,11 @@
 
 namespace rpc {
 namespace {
-constexpr std::array<std::string_view, 8> kBuiltinMethods = {
+constexpr std::array<std::string_view, 9> kBuiltinMethods = {
     "rpc.ping",
     "rpc.echo",
     "rpc.context",
+    "rpc.health",
     "rpc.listMethods",
     "rpc.methodsCount",
     "rpc.time",
@@ -71,6 +72,12 @@ RpcResponse RpcDispatcher::dispatch(const RpcRequest& request, const RpcContext&
     if (request.method == "rpc.context") {
         std::ostringstream out;
         out << "node_name=" << context.nodeName << " network=" << context.network;
+        return RpcResponse::success(request.id, out.str());
+    }
+
+    if (request.method == "rpc.health") {
+        std::ostringstream out;
+        out << "status=ok uptime_s=" << (nowSeconds() - startTime) << " now=" << nowSeconds();
         return RpcResponse::success(request.id, out.str());
     }
 
