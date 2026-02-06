@@ -242,13 +242,13 @@ void Blockchain::minePendingTransactions(const std::string& minerAddress) {
     std::unordered_map<std::string, Amount> projectedBalance;
     Amount collectedFees = 0;
 
+    const std::uint64_t now = nowSeconds();
     for (const std::size_t idx : order) {
         if (transactionsToMine.size() >= maxUserTransactions) {
             break;
         }
 
         const Transaction& candidate = pendingTransactions_[idx];
-        const std::uint64_t now = nowSeconds();
         if (!isTimestampAcceptable(candidate.timestamp) || isMempoolTransactionExpired(candidate, now)) {
             continue;
         }
@@ -820,13 +820,13 @@ std::vector<Transaction> Blockchain::getPendingTransactionsForBlockTemplate() co
     std::vector<Transaction> selected;
     selected.reserve(maxUserTransactions);
 
+    const std::uint64_t now = nowSeconds();
     for (const std::size_t idx : order) {
         if (selected.size() >= maxUserTransactions) {
             break;
         }
 
         const Transaction& candidate = pendingTransactions_[idx];
-        const std::uint64_t now = nowSeconds();
         if (!isTimestampAcceptable(candidate.timestamp) || isMempoolTransactionExpired(candidate, now)) {
             continue;
         }
