@@ -19,7 +19,7 @@ const char* toString(LogLevel level) {
         case LogLevel::Error:
             return "ERROR";
         default:
-            return "INFO";
+            return "UNKNOWN";
     }
 }
 
@@ -95,8 +95,19 @@ LogLevel Logger::minLevel() const {
 }
 
 std::string Logger::format(const LogEntry& entry) {
-    return "[" + std::to_string(entry.timestamp) + "] [" + toString(entry.level) + "] [" + entry.component +
-           "] " + entry.message;
+    const std::string timestamp = std::to_string(entry.timestamp);
+    const std::string level = toString(entry.level);
+    std::string formatted;
+    formatted.reserve(timestamp.size() + level.size() + entry.component.size() + entry.message.size() + 8);
+    formatted.append("[");
+    formatted.append(timestamp);
+    formatted.append("] [");
+    formatted.append(level);
+    formatted.append("] [");
+    formatted.append(entry.component);
+    formatted.append("] ");
+    formatted.append(entry.message);
+    return formatted;
 }
 
 std::uint64_t Logger::nowSeconds() {
