@@ -90,6 +90,18 @@ struct MonetaryProjection {
     Amount nextSubsidy = 0;
 };
 
+struct SupplyAuditEntry {
+    std::size_t height = 0;
+    std::string hash;
+    Amount blockSubsidy = 0;
+    Amount totalFees = 0;
+    Amount mintedReward = 0;
+    Amount maxAllowedReward = 0;
+    Amount cumulativeSupply = 0;
+    bool rewardWithinLimit = false;
+    bool supplyWithinCap = false;
+};
+
 struct SyncStatus {
     std::size_t localHeight = 0;
     std::optional<std::size_t> locatorHeight;
@@ -176,6 +188,8 @@ public:
     [[nodiscard]] std::optional<TransactionLookup> findTransactionById(const std::string& txId) const;
     [[nodiscard]] Amount estimateSupplyAtHeight(std::size_t height) const;
     [[nodiscard]] MonetaryProjection getMonetaryProjection(std::size_t height) const;
+    [[nodiscard]] std::vector<SupplyAuditEntry> getSupplyAudit(std::size_t startHeight,
+                                                               std::size_t maxCount) const;
     [[nodiscard]] bool tryAdoptChain(const std::vector<Block>& candidateChain);
     [[nodiscard]] const std::vector<Block>& getChain() const;
     [[nodiscard]] const std::vector<Transaction>& getPendingTransactions() const;

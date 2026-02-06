@@ -409,6 +409,60 @@ MonetaryProjection Blockchain::getMonetaryProjection(std::size_t height) const {
     return projection;
 }
 
+std::vector<SupplyAuditEntry> Blockchain::getSupplyAudit(std::size_t startHeight,
+                                                         std::size_t maxCount) const {
+    if (maxCount == 0 || startHeight >= chain_.size()) {
+        return {};
+    }
+
+    const std::size_t end = boundedEndHeight(startHeight, maxCount, chain_.size());
+    std::vector<SupplyAuditEntry> audit;
+    audit.reserve(end - startHeight);
+
+    Amount cumulativeSupply = 0;
+    for (std::size_t height = 0; height < end; ++height) {
+        const Block& block = chain_[height];
+        Amount totalFees = 0;
+        Amount mintedReward = 0;
+
+        for (const auto& tx : block.getTransactions()) {
+            if (tx.from == "network") {
+                if (!safeAdd(mintedReward, tx.amount, mintedReward)) {
+                    throw std::overflow_error("Overflow minted reward.");
+                }
+                if (!safeAdd(cumulativeSupply, tx.amount, cumulativeSupply)) {
+                    throw std::overflow_error("Overflow cumulative supply.");
+                }
+            } else if (!safeAdd(totalFees, tx.fee, totalFees)) {
+                throw std::overflow_error("Overflow total fees.");
+            }
+        }
+
+        if (height < startHeight) {
+            continue;
+        }
+
+        SupplyAuditEntry entry;
+        entry.height = height;
+        entry.hash = block.getHash();
+        entry.blockSubsidy = height == 0 ? 0 : blockSubsidyAtHeight(height);
+        entry.totalFees = totalFees;
+        entry.mintedReward = mintedReward;
+
+        Amount maxAllowed = 0;
+        if (!safeAdd(entry.blockSubsidy, totalFees, maxAllowed)) {
+            throw std::overflow_error("Overflow max allowed reward.");
+        }
+        entry.maxAllowedReward = maxAllowed;
+        entry.cumulativeSupply = cumulativeSupply;
+        entry.rewardWithinLimit = height == 0 ? mintedReward == 0 : mintedReward <= maxAllowed;
+        entry.supplyWithinCap = cumulativeSupply <= kMaxSupply;
+        audit.push_back(entry);
+    }
+
+    return audit;
+}
+
 unsigned int Blockchain::getCurrentDifficulty() const {
     return chain_.empty() ? initialDifficulty_ : chain_.back().getDifficulty();
 }
