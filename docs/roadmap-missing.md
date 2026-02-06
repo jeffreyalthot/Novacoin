@@ -5,6 +5,22 @@ Ce document synthétise les fonctionnalités, outils et garde-fous **manquants**
 
 > Objectif : transformer chaque point en tâches techniques concrètes (issues) et en tests associés.
 
+## Mode d'emploi (exécution incrémentale)
+
+1. **Créer une issue par item** : définir le périmètre, les risques et les critères d'acceptation.
+2. **Ajouter les tests en premier** : unitaires + fonctionnels pour verrouiller le consensus.
+3. **Tracer le statut** : marquer ✅ en fin de PR et référencer la PR associée.
+
+## Priorités immédiates (0–90 jours)
+
+> Focus : consensus, sécurité et tests (verrouillage du cœur).
+
+- [ ] Spécification protocolaire v1 publiée + règles de sérialisation canonique.
+- [ ] Invariants de supply testés (hard cap + rewards + fees).
+- [ ] Vecteurs de tests consensus (blocs/tx invalides ciblés).
+- [ ] Pipeline de validation stricte (timestamps, sigops, poids blocs).
+- [ ] Simulations réorgs profondes + remise en mempool.
+
 ## 1) Gouvernance technique & spécifications
 
 - Spécification protocolaire v1 (formats bloc/tx, sérialisation, endianness).
