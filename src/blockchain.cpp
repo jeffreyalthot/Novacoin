@@ -1212,6 +1212,7 @@ SyncStatus Blockchain::getSyncStatus(const std::vector<std::string>& locatorHash
                                      const std::string& stopHash) const {
     SyncStatus status;
     if (chain_.empty()) {
+        status.isAtTip = true;
         return status;
     }
 
@@ -1236,15 +1237,19 @@ SyncStatus Blockchain::getSyncStatus(const std::vector<std::string>& locatorHash
         if (stopHeight.has_value()) {
             if (stopHeight.value() < startHeight) {
                 status.responseBlockCount = 0;
+                status.isAtTip = true;
+                status.isStopHashLimiting = true;
                 return status;
             }
 
             const std::size_t upToStop = stopHeight.value() - startHeight + 1;
+            status.isStopHashLimiting = upToStop <= allowedCount;
             allowedCount = std::min(allowedCount, upToStop);
         }
     }
 
     status.responseBlockCount = std::min(status.remainingBlocks, allowedCount);
+    status.isAtTip = status.responseBlockCount == 0;
     return status;
 }
 

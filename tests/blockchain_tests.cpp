@@ -541,6 +541,10 @@ void testSyncStatusProvidesDeterministicWindow() {
                "Le stop hash doit etre resolu en hauteur lorsqu'il est connu.");
     assertTrue(status.responseBlockCount == 1,
                "Le nombre de blocs a renvoyer doit etre borne par le stop hash inclus.");
+    assertTrue(!status.isAtTip,
+               "Quand des blocs restent a envoyer, le status ne doit pas signaler un tip atteint.");
+    assertTrue(status.isStopHashLimiting,
+               "Le status doit indiquer que la fenetre est limitee par le stop hash.");
 }
 
 void testSyncStatusHandlesUnknownLocatorAndStop() {
@@ -555,6 +559,27 @@ void testSyncStatusHandlesUnknownLocatorAndStop() {
     assertTrue(status.nextHeight == 0, "Sans locator resolu, la reprise doit commencer au genesis.");
     assertTrue(status.responseBlockCount == 1,
                "Quand le stop est inconnu, la reponse doit rester bornee par max_count.");
+    assertTrue(!status.isAtTip,
+               "Avec une fenetre non vide, le noeud ne doit pas etre considere au tip du pair.");
+    assertTrue(!status.isStopHashLimiting,
+               "Sans stop hash resolu, la fenetre ne doit pas etre marquee comme stop-bornee.");
+}
+
+
+void testSyncStatusAtTipSignalsTerminalWindow() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 4};
+    chain.minePendingTransactions("miner");
+    chain.minePendingTransactions("miner");
+
+    const auto locator = chain.getBlockLocatorHashes();
+    const auto status = chain.getSyncStatus(locator, 10, "");
+
+    assertTrue(status.responseBlockCount == 0,
+               "Quand le locator pointe sur le tip local, aucun bloc ne doit etre renvoye.");
+    assertTrue(status.isAtTip,
+               "Le status doit expliciter que le pair est deja aligne sur le tip local.");
+    assertTrue(!status.isStopHashLimiting,
+               "Sans stop hash, la fenetre ne doit pas etre marquee comme stop-limitee.");
 }
 
 void testHeadersForLocatorWithUnknownStopHashFallsBackToMaxCount() {
@@ -1055,6 +1080,7 @@ int main() {
         testHeadersForLocatorWithUnknownStopHashFallsBackToMaxCount();
         testSyncStatusProvidesDeterministicWindow();
         testSyncStatusHandlesUnknownLocatorAndStop();
+        testSyncStatusAtTipSignalsTerminalWindow();
         testBlocksFromHeightAndLocatorHelpers();
         testBlocksForLocatorWithStopHashBoundsResponse();
         testBlockSummaryLookupByHeightAndHash();
