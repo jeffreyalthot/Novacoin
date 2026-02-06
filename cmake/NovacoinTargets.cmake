@@ -13,6 +13,9 @@ set(NOVACOIN_CORE_SOURCES
     src/utils/logger.cpp
     src/validation/block_validator.cpp
     src/wallet/wallet.cpp
+    src/wallet/wallet_dat_codec.cpp
+    src/wallet/wallet_dat_loader.cpp
+    src/wallet/wallet_dat_writer.cpp
     src/wallet/wallet_profile.cpp
 )
 
