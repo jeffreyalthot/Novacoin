@@ -1008,11 +1008,6 @@ Amount Blockchain::estimateRequiredFeeForInclusion(std::size_t targetBlocks) con
         return kMinRelayFee;
     }
 
-    const std::size_t projectedSlots = maxUserTransactions * targetBlocks;
-    if (projectedSlots == 0 || projectedSlots > pendingTransactions_.size()) {
-        return kMinRelayFee;
-    }
-
     std::vector<Amount> fees;
     fees.reserve(pendingTransactions_.size());
     const std::uint64_t now = nowSeconds();
@@ -1027,11 +1022,12 @@ Amount Blockchain::estimateRequiredFeeForInclusion(std::size_t targetBlocks) con
         return kMinRelayFee;
     }
 
-    std::sort(fees.begin(), fees.end(), std::greater<Amount>());
-    if (projectedSlots > fees.size()) {
+    const std::size_t projectedSlots = maxUserTransactions * targetBlocks;
+    if (projectedSlots == 0 || projectedSlots > fees.size()) {
         return kMinRelayFee;
     }
 
+    std::sort(fees.begin(), fees.end(), std::greater<Amount>());
     const Amount cutoffFee = fees[projectedSlots - 1];
     return std::max(kMinRelayFee, cutoffFee);
 }
