@@ -539,7 +539,9 @@ int main(int argc, char* argv[]) {
                       << Transaction::toNOVA(chain.estimateNextMiningReward()) << " NOVA\n"
                       << "  reorg_count=" << chain.getReorgCount() << "\n"
                       << "  last_reorg_depth=" << chain.getLastReorgDepth() << "\n"
-                      << "  last_fork_height=" << chain.getLastForkHeight() << "\n";
+                      << "  last_fork_height=" << chain.getLastForkHeight() << "\n"
+                      << "  last_fork_hash="
+                      << (chain.getLastForkHash().empty() ? "none" : chain.getLastForkHash()) << "\n";
             return 0;
         }
 

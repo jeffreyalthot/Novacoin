@@ -133,6 +133,7 @@ public:
     [[nodiscard]] std::string getChainSummary() const;
     [[nodiscard]] std::size_t getLastReorgDepth() const;
     [[nodiscard]] std::size_t getLastForkHeight() const;
+    [[nodiscard]] std::string getLastForkHash() const;
     [[nodiscard]] std::size_t getReorgCount() const;
     [[nodiscard]] std::vector<Transaction> getPendingTransactionsForBlockTemplate() const;
     [[nodiscard]] AddressStats getAddressStats(const std::string& address) const;
@@ -200,6 +201,7 @@ private:
     std::vector<Transaction> pendingTransactions_;
     std::size_t lastReorgDepth_ = 0;
     std::size_t lastForkHeight_ = 0;
+    std::string lastForkHash_;
     std::size_t reorgCount_ = 0;
 
     Block createGenesisBlock() const;

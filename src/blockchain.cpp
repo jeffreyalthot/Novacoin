@@ -62,6 +62,7 @@ Blockchain::Blockchain(unsigned int difficulty, Amount miningReward, std::size_t
       pendingTransactions_(),
       lastReorgDepth_(0),
       lastForkHeight_(0),
+      lastForkHash_(),
       reorgCount_(0) {
     if (maxTransactionsPerBlock_ == 0) {
         throw std::invalid_argument("La taille maximale d'un bloc doit être > 0.");
@@ -776,6 +777,7 @@ bool Blockchain::tryAdoptChain(const std::vector<Block>& candidateChain) {
     const std::size_t detachedBlocks = previousChain.size() > sharedPrefix ? previousChain.size() - sharedPrefix : 0;
     lastReorgDepth_ = detachedBlocks;
     lastForkHeight_ = sharedPrefix > 0 ? sharedPrefix - 1 : 0;
+    lastForkHash_ = sharedPrefix > 0 ? previousChain[sharedPrefix - 1].getHash() : "";
     ++reorgCount_;
 
     return true;
@@ -1368,5 +1370,7 @@ const std::vector<Transaction>& Blockchain::getPendingTransactions() const { ret
 std::size_t Blockchain::getLastReorgDepth() const { return lastReorgDepth_; }
 
 std::size_t Blockchain::getLastForkHeight() const { return lastForkHeight_; }
+
+std::string Blockchain::getLastForkHash() const { return lastForkHash_; }
 
 std::size_t Blockchain::getReorgCount() const { return reorgCount_; }

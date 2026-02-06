@@ -302,7 +302,7 @@ void testNoReorgMetricsChangeWhenAdoptionRejected() {
     const bool adopted = chain.tryAdoptChain(weaker);
     assertTrue(!adopted, "Une chaine rejetee ne doit pas etre adoptee.");
     assertTrue(chain.getReorgCount() == 0, "Le compteur de reorg ne doit pas augmenter en cas d'echec.");
-    assertTrue(chain.getLastReorgDepth() == 0, "La profondeur de reorg doit rester a 0 sans adoption.");
+    assertTrue(chain.getLastForkHash().empty(), "Le hash de fork doit rester vide sans reorg adoptee.");
 }
 
 void testReorgMetricsTrackDepthAndForkHeight() {
@@ -330,6 +330,8 @@ void testReorgMetricsTrackDepthAndForkHeight() {
     assertTrue(chain.getReorgCount() == 1, "Le compteur de reorg doit augmenter apres adoption.");
     assertTrue(chain.getLastReorgDepth() == 1, "La profondeur doit correspondre au nombre de blocs detaches.");
     assertTrue(chain.getLastForkHeight() == 1, "La hauteur de fork doit pointer le dernier bloc commun.");
+    assertTrue(chain.getLastForkHash() == candidate[1].getHash(),
+               "Le hash de fork doit correspondre au dernier bloc commun entre les branches.");
 }
 
 
