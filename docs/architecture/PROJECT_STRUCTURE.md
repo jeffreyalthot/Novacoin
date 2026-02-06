@@ -8,7 +8,7 @@ Pour faciliter l'extension du développement, le projet est organisé en dossier
 - `src/validation/` : validateurs spécialisés (ex: forme basique des blocs).
 - `src/rpc/` : structures de contexte et couches de service RPC.
 - `src/wallet/` : profilage wallet et métadonnées utilisateur.
-- `src/network/` : primitives de gestion de pairs et orchestration réseau.
+- `src/network/` : primitives de gestion de pairs, seeds de bootstrap et orchestration réseau.
 - `src/storage/` : snapshots et briques liées à la persistance.
 - `src/utils/` : outils transverses (journalisation, helpers techniques).
 - `src/apps/` : points d'entrée applicatifs (CLI, daemon, wallet, regtest).
