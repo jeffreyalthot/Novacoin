@@ -10,6 +10,15 @@ Ce README sert de **plan directeur complet** pour poser les bases techniques, é
 
 ## État actuel de la roadmap (mise à jour)
 
+L'état d'avancement est suivi en continu dans une check-list opérationnelle dédiée
+aux éléments manquants, afin de transformer chaque point de la roadmap en tâches
+techniques concrètes (issues/tests). Consulter :
+
+- `docs/roadmap-missing.md` pour la liste détaillée des chantiers par domaine.
+- `docs/architecture/` pour l'organisation cible des composants.
+
+Les jalons validés et les phases en cours sont récapitulés plus bas dans ce README.
+
 ## Organisation du dépôt (extensible)
 
 Le dépôt adopte une structure en dossiers pour accélérer les futures extensions :
