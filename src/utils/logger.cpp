@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <iterator>
 
 namespace {
 constexpr int levelValue(LogLevel level) {
@@ -66,6 +67,25 @@ std::vector<LogEntry> Logger::entries() const {
     std::vector<LogEntry> snapshot;
     snapshot.reserve(entries_.size());
     snapshot.assign(entries_.begin(), entries_.end());
+    return snapshot;
+}
+
+std::vector<LogEntry> Logger::entries(std::size_t limit) const {
+    std::lock_guard<std::mutex> guard(mutex_);
+    if (limit == 0 || entries_.empty()) {
+        return {};
+    }
+
+    const std::size_t total = entries_.size();
+    const std::size_t count = std::min(limit, total);
+    auto start = entries_.begin();
+    if (count < total) {
+        start = std::next(entries_.begin(), static_cast<std::ptrdiff_t>(total - count));
+    }
+
+    std::vector<LogEntry> snapshot;
+    snapshot.reserve(count);
+    snapshot.assign(start, entries_.end());
     return snapshot;
 }
 
