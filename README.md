@@ -46,11 +46,17 @@ Plusieurs sous-dossiers de cette structure contiennent désormais un `README.md`
 Le projet fournit maintenant plusieurs binaires cohérents avec une future architecture multi-composants :
 
 - `novacoin` : démonstration principale du noyau blockchain.
-- `novacoind` : simulation d'un nœud daemon (status, minage, soumission de transactions, mempool, difficulté, work).
+- `novacoind` : nœud daemon avec serveur RPC intégré (commandes locales + point d'entrée `rpc` pour interagir avec le daemon, le nœud et le serveur).
 - `novacoin-cli` : commandes de base (`mine`, `send`, `balance`, `summary`) + observabilite locale (`address-stats`, `mempool-stats`, `top`, `consensus`, `work`, `difficulty`, `time`, `reorgs`, `reward-estimate`) + exploration transactionnelle (`tx`, `history`) + outils de sync headers-first (`headers`, `locator`, `headers-sync`, `headers-sync-stop`, `blocks-sync`, `blocks-sync-stop`, `sync-status`, `block`, `blocks`).
 - `novacoin-wallet` : consultation simple d'un wallet local (balance, history, stats, summary) + outils de conversion clés (`wallet-wif-from-hex`, `wallet-address-from-hex`).
 - `novacoin-tx` : construction/inspection d'une transaction (create, decode, validate, id).
 - `novacoin-regtest` : scénario de test local déterministe (summary, balances, mine, send, history).
+
+Le mode RPC intégré de `novacoind` permet d'appeler les méthodes `rpc.*` et `node.*` depuis la CLI, par exemple :
+
+- `novacoind rpc rpc.listMethods`
+- `novacoind rpc node.status`
+- `novacoind rpc node.mine node-miner 2`
 
 
 - ✅ **Phase 1 (noyau single-node)** : chaîne locale, mempool, minage PoW, validation globale.
