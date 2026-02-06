@@ -1,3 +1,3 @@
 # Contrib
 
-Composants utilitaires et scripts annexes Novacoin, alignés sur la structure de Bitcoin Core.
+Composants utilitaires et scripts annexes de Novacoin Core.

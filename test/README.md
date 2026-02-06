@@ -1,3 +1,3 @@
-# Tests Novacoin (style Bitcoin Core)
+# Tests Novacoin Core
 
-Ce dossier `test/` fournit la structure attendue pour les tests fonctionnels, fuzz et utilitaires.
+Ce dossier `test/` fournit la structure attendue pour les tests fonctionnels, fuzz et utilitaires de Novacoin Core.

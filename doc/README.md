@@ -1,4 +1,4 @@
-# Documentation Novacoin (style Bitcoin Core)
+# Documentation Novacoin Core
 
-Ce dossier `doc/` aligne l'arborescence Novacoin sur la convention de Bitcoin Core.
+Ce dossier `doc/` documente Novacoin Core (release notes, guides opérateur).
 Il complète le dossier historique `docs/` déjà présent dans le projet.
