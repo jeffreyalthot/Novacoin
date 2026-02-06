@@ -19,7 +19,10 @@ void printUsage() {
               << "  novacoind mine <miner> [count]\n"
               << "  novacoind submit <from> <to> <amount_nova> [fee_nova]\n"
               << "  novacoind mempool\n"
-              << "  novacoind difficulty\n";
+              << "  novacoind difficulty\n"
+              << "  novacoind supply\n"
+              << "  novacoind consensus\n"
+              << "  novacoind reorgs\n";
 }
 
 double parseDouble(const std::string& raw, const std::string& field) {
@@ -127,6 +130,49 @@ int main(int argc, char* argv[]) {
             std::cout << "difficulty\n"
                       << "  current=" << daemonChain.getCurrentDifficulty() << "\n"
                       << "  next=" << daemonChain.estimateNextDifficulty() << "\n";
+            return 0;
+        }
+
+        if (command == "supply") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+            std::cout << "supply\n"
+                      << "  height=" << daemonChain.getBlockCount() - 1 << "\n"
+                      << "  total=" << std::fixed << std::setprecision(8)
+                      << Transaction::toNOVA(daemonChain.getTotalSupply()) << " NOVA\n"
+                      << "  max=" << Transaction::toNOVA(Blockchain::kMaxSupply) << " NOVA\n";
+            return 0;
+        }
+
+        if (command == "consensus") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+            std::cout << "consensus\n"
+                      << "  height=" << daemonChain.getBlockCount() - 1 << "\n"
+                      << "  current_difficulty=" << daemonChain.getCurrentDifficulty() << "\n"
+                      << "  next_difficulty=" << daemonChain.estimateNextDifficulty() << "\n"
+                      << "  cumulative_work=" << daemonChain.getCumulativeWork() << "\n"
+                      << "  median_time_past=" << daemonChain.getMedianTimePast() << "\n"
+                      << "  next_min_timestamp=" << daemonChain.estimateNextMinimumTimestamp() << "\n"
+                      << "  next_reward=" << std::fixed << std::setprecision(8)
+                      << Transaction::toNOVA(daemonChain.estimateNextMiningReward()) << " NOVA\n";
+            return 0;
+        }
+
+        if (command == "reorgs") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+            std::cout << "reorgs\n"
+                      << "  reorg_count=" << daemonChain.getReorgCount() << "\n"
+                      << "  last_reorg_depth=" << daemonChain.getLastReorgDepth() << "\n"
+                      << "  last_fork_height=" << daemonChain.getLastForkHeight() << "\n"
+                      << "  last_fork_hash=" << daemonChain.getLastForkHash() << "\n";
             return 0;
         }
 

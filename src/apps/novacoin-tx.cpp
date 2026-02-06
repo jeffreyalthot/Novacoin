@@ -19,6 +19,8 @@ void printUsage() {
               << "  novacoin-tx create <from> <to> <amount_nova> [fee_nova]\n"
               << "  novacoin-tx decode <serialized_tx>\n"
               << "  novacoin-tx id <serialized_tx>\n"
+              << "  novacoin-tx summary <serialized_tx>\n"
+              << "  novacoin-tx amounts <serialized_tx>\n"
               << "  novacoin-tx <from> <to> <amount_nova> [fee_nova]\n\n"
               << "Example:\n"
               << "  novacoin-tx create alice bob 1.25 0.10\n";
@@ -55,6 +57,25 @@ void printTransactionDetails(const Transaction& tx) {
               << "  timestamp: " << tx.timestamp << "\n"
               << "  id: " << tx.id() << "\n"
               << "  serialized: " << tx.serialize() << "\n";
+}
+
+void printTransactionSummary(const Transaction& tx) {
+    const Amount total = tx.amount + tx.fee;
+    std::cout << "Summary\n"
+              << "  id: " << tx.id() << "\n"
+              << "  from: " << tx.from << "\n"
+              << "  to: " << tx.to << "\n"
+              << "  amount: " << std::fixed << std::setprecision(8) << Transaction::toNOVA(tx.amount) << " NOVA\n"
+              << "  fee: " << Transaction::toNOVA(tx.fee) << " NOVA\n"
+              << "  total: " << Transaction::toNOVA(total) << " NOVA\n";
+}
+
+void printTransactionAmounts(const Transaction& tx) {
+    const Amount total = tx.amount + tx.fee;
+    std::cout << "Amounts\n"
+              << "  amount_atoms=" << tx.amount << "\n"
+              << "  fee_atoms=" << tx.fee << "\n"
+              << "  total_atoms=" << total << "\n";
 }
 } // namespace
 
@@ -95,6 +116,26 @@ int main(int argc, char* argv[]) {
             }
             const Transaction tx = Transaction::deserialize(argv[2]);
             std::cout << tx.id() << "\n";
+            return 0;
+        }
+
+        if (command == "summary") {
+            if (argc != 3) {
+                printUsage();
+                return 1;
+            }
+            const Transaction tx = Transaction::deserialize(argv[2]);
+            printTransactionSummary(tx);
+            return 0;
+        }
+
+        if (command == "amounts") {
+            if (argc != 3) {
+                printUsage();
+                return 1;
+            }
+            const Transaction tx = Transaction::deserialize(argv[2]);
+            printTransactionAmounts(tx);
             return 0;
         }
 
