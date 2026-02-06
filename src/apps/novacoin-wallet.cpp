@@ -26,6 +26,7 @@ void printUsage() {
               << "  novacoin-wallet wallet-public-key-from-wif <wallet.dat> <wif> [passphrase]\n"
               << "  novacoin-wallet wallet-address-from-wif <wallet.dat> <wif> [passphrase]\n"
               << "  novacoin-wallet wallet-wif-from-hex <wallet.dat> <private_key_hex> [passphrase]\n"
+              << "  novacoin-wallet wallet-address-from-hex <wallet.dat> <private_key_hex> [passphrase]\n"
               << "  novacoin-wallet wallet-address <wallet.dat> <index> [passphrase]\n"
               << "  novacoin-wallet wallet-derive-address <wallet.dat> <index> [passphrase]\n"
               << "  novacoin-wallet wallet-hex-from-wif <wallet.dat> <wif> [passphrase]\n"
@@ -363,6 +364,23 @@ int main(int argc, char* argv[]) {
                 std::string passphrase = argc == 5 ? argv[4] : "";
                 auto walletStore = wallet::WalletStore::load(path, passphrase);
                 std::cout << "wif=" << walletStore.privateKeyHexToWif(privateKeyHex) << "\n";
+                return 0;
+            }
+
+            if (command == "wallet-address-from-hex") {
+                if (argc < 4 || argc > 5) {
+                    printUsage();
+                    return 1;
+                }
+                const std::string path = requireArg(argv[2], "Chemin wallet.dat manquant.");
+                const std::string privateKeyHex = requireArg(argv[3], "Cle privee manquante.");
+                std::string passphrase = argc == 5 ? argv[4] : "";
+                auto walletStore = wallet::WalletStore::load(path, passphrase);
+                const std::string publicKey = walletStore.privateKeyHexToPublicKey(privateKeyHex);
+                const std::string address = walletStore.publicKeyToAddress(publicKey);
+                std::cout << "p2pkh_address=" << address << "\n"
+                          << "public_key_hex=" << publicKey << "\n"
+                          << "public_key_script=" << walletStore.publicKeyToPublicKeyScript(publicKey) << "\n";
                 return 0;
             }
 

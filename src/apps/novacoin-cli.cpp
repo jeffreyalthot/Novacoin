@@ -54,6 +54,7 @@ void printUsage() {
               << "  novacoin-cli tx <txid>\n"
               << "  novacoin-cli history <address> [limit] [--confirmed-only]\n"
               << "  novacoin-cli consensus\n"
+              << "  novacoin-cli work\n"
               << "  novacoin-cli monetary [height]\n"
               << "  novacoin-cli supply [height]\n"
               << "  novacoin-cli supply-remaining\n"
@@ -731,6 +732,16 @@ int main(int argc, char* argv[]) {
                       << "  last_fork_height=" << chain.getLastForkHeight() << "\n"
                       << "  last_fork_hash="
                       << (chain.getLastForkHash().empty() ? "none" : chain.getLastForkHash()) << "\n";
+            return 0;
+        }
+
+        if (command == "work") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+            std::cout << "cumulative_work=" << chain.getCumulativeWork() << "\n"
+                      << "  height=" << chain.getBlockCount() - 1 << "\n";
             return 0;
         }
 
