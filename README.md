@@ -10,6 +10,15 @@ Ce README sert de **plan directeur complet** pour poser les bases techniques, é
 
 ## État actuel de la roadmap (mise à jour)
 
+## Organisation du dépôt (extensible)
+
+Le dépôt adopte une structure en dossiers pour accélérer les futures extensions :
+
+- `src/core/` et `include/core/` pour les composants transverses,
+- `src/apps/` pour les binaires utilisateurs/opérateurs,
+- `cmake/` pour factoriser la configuration des cibles,
+- `docs/architecture/` pour documenter les conventions de croissance.
+
 ## Outils CLI disponibles
 
 Le projet fournit maintenant plusieurs binaires cohérents avec une future architecture multi-composants :
