@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 
+#include "transaction.hpp"
+
 namespace wallet {
 
 enum class KeyMode : std::uint8_t {
@@ -30,13 +32,19 @@ class WalletStore {
     [[nodiscard]] std::string privateKeyHexToPublicKey(const std::string& privateKeyHex) const;
     [[nodiscard]] std::string publicKeyToPublicKeyScript(const std::string& publicKeyHex) const;
     [[nodiscard]] std::string publicKeyToAddress(const std::string& publicKeyHex) const;
+    [[nodiscard]] std::string deriveAddress(std::uint32_t index,
+                                            const std::string& passphrase = "") const;
+
+    void addIncomingTransaction(const Transaction& tx, const std::string& walletAddress);
+    [[nodiscard]] const std::vector<Transaction>& incomingTransactions() const;
 
   private:
     WalletStore(std::vector<std::uint8_t> masterKey,
                 bool encrypted,
                 std::vector<std::uint8_t> salt,
                 KeyMode keyMode,
-                std::uint32_t lastIndex);
+                std::uint32_t lastIndex,
+                std::vector<Transaction> incomingTransactions);
 
     [[nodiscard]] std::vector<std::uint8_t> getMasterKeyBytes(const std::string& passphrase) const;
 
@@ -45,6 +53,7 @@ class WalletStore {
     std::vector<std::uint8_t> salt_;
     KeyMode keyMode_ = KeyMode::Seed;
     std::uint32_t lastIndex_ = 0;
+    std::vector<Transaction> incomingTransactions_;
 };
 
 } // namespace wallet

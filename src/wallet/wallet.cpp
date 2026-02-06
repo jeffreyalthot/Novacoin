@@ -1,8 +1,9 @@
 #include "wallet/wallet.hpp"
+#include "wallet/wallet_dat_loader.hpp"
+#include "wallet/wallet_dat_writer.hpp"
 
 #include <algorithm>
 #include <array>
-#include <fstream>
 #include <random>
 #include <sstream>
 #include <stdexcept>
@@ -10,7 +11,6 @@
 
 namespace wallet {
 namespace {
-constexpr std::array<std::uint8_t, 4> kMagic{{'N', 'V', 'W', '1'}};
 constexpr std::size_t kMasterKeySize = 32;
 constexpr std::size_t kSaltSize = 16;
 constexpr std::uint8_t kAddressVersion = 0x35;
@@ -193,29 +193,20 @@ std::vector<std::uint8_t> scalarToPublic(const std::vector<std::uint8_t>& privat
     return publicKey;
 }
 
-void writeBytes(std::ofstream& out, const std::vector<std::uint8_t>& data) {
-    out.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size()));
-}
-
-std::vector<std::uint8_t> readBytes(std::ifstream& in, std::size_t size) {
-    std::vector<std::uint8_t> data(size);
-    in.read(reinterpret_cast<char*>(data.data()), static_cast<std::streamsize>(size));
-    require(in.gcount() == static_cast<std::streamsize>(size), "Fichier wallet incomplet.");
-    return data;
-}
-
 } // namespace
 
 WalletStore::WalletStore(std::vector<std::uint8_t> masterKey,
                          bool encrypted,
                          std::vector<std::uint8_t> salt,
                          KeyMode keyMode,
-                         std::uint32_t lastIndex)
+                         std::uint32_t lastIndex,
+                         std::vector<Transaction> incomingTransactions)
     : masterKey_(std::move(masterKey)),
       encrypted_(encrypted),
       salt_(std::move(salt)),
       keyMode_(keyMode),
-      lastIndex_(lastIndex) {}
+      lastIndex_(lastIndex),
+      incomingTransactions_(std::move(incomingTransactions)) {}
 
 WalletStore WalletStore::createNew(bool encryptMasterKey, const std::string& passphrase) {
     auto masterKey = randomBytes(kMasterKeySize);
@@ -228,7 +219,7 @@ WalletStore WalletStore::createNew(bool encryptMasterKey, const std::string& pas
         masterKey = xorWithKey(masterKey, key);
         encrypted = true;
     }
-    return WalletStore{std::move(masterKey), encrypted, std::move(salt), KeyMode::Seed, 0};
+    return WalletStore{std::move(masterKey), encrypted, std::move(salt), KeyMode::Seed, 0, {}};
 }
 
 WalletStore WalletStore::restoreFromWif(const std::string& wif,
@@ -248,29 +239,18 @@ WalletStore WalletStore::restoreFromWif(const std::string& wif,
         privateKey = xorWithKey(privateKey, key);
         encrypted = true;
     }
-    return WalletStore{std::move(privateKey), encrypted, std::move(salt), KeyMode::Single, 0};
+    return WalletStore{std::move(privateKey), encrypted, std::move(salt), KeyMode::Single, 0, {}};
 }
 
 WalletStore WalletStore::load(const std::string& path, const std::string& passphrase) {
-    std::ifstream in(path, std::ios::binary);
-    require(in.is_open(), "Impossible d'ouvrir le wallet.dat.");
-    auto magic = readBytes(in, kMagic.size());
-    require(std::equal(magic.begin(), magic.end(), kMagic.begin()), "wallet.dat invalide.");
-    const auto version = readBytes(in, 1);
-    require(version[0] == 1, "Version wallet inconnue.");
-    const auto flags = readBytes(in, 1);
-    bool encrypted = (flags[0] & 0x1) != 0;
-    bool singleKey = (flags[0] & 0x2) != 0;
-    std::uint32_t lastIndex = 0;
-    auto indexBytes = readBytes(in, 4);
-    for (std::size_t i = 0; i < 4; ++i) {
-        lastIndex |= static_cast<std::uint32_t>(indexBytes[i]) << (8 * i);
-    }
-    auto salt = readBytes(in, kSaltSize);
-    auto masterKey = readBytes(in, kMasterKeySize);
-    WalletStore wallet{std::move(masterKey), encrypted, std::move(salt),
-                       singleKey ? KeyMode::Single : KeyMode::Seed, lastIndex};
-    if (encrypted) {
+    auto payload = load_wallet_dat(path);
+    WalletStore wallet{std::move(payload.masterKey),
+                       payload.encrypted,
+                       std::move(payload.salt),
+                       payload.keyMode,
+                       payload.lastIndex,
+                       std::move(payload.incomingTransactions)};
+    if (payload.encrypted) {
         require(!passphrase.empty(), "Passphrase requise pour le wallet chiffré.");
         wallet.getMasterKeyBytes(passphrase);
     }
@@ -278,32 +258,14 @@ WalletStore WalletStore::load(const std::string& path, const std::string& passph
 }
 
 void WalletStore::save(const std::string& path) const {
-    std::ofstream out(path, std::ios::binary | std::ios::trunc);
-    require(out.is_open(), "Impossible d'ecrire wallet.dat.");
-    writeBytes(out, std::vector<std::uint8_t>(kMagic.begin(), kMagic.end()));
-    std::uint8_t version = 1;
-    out.write(reinterpret_cast<const char*>(&version), 1);
-    std::uint8_t flags = 0;
-    if (encrypted_) {
-        flags |= 0x1;
-    }
-    if (keyMode_ == KeyMode::Single) {
-        flags |= 0x2;
-    }
-    out.write(reinterpret_cast<const char*>(&flags), 1);
-    std::array<std::uint8_t, 4> indexBytes{};
-    for (std::size_t i = 0; i < 4; ++i) {
-        indexBytes[i] = static_cast<std::uint8_t>((lastIndex_ >> (8 * i)) & 0xFF);
-    }
-    writeBytes(out, std::vector<std::uint8_t>(indexBytes.begin(), indexBytes.end()));
-    std::vector<std::uint8_t> salt = salt_;
-    if (salt.size() != kSaltSize) {
-        salt.assign(kSaltSize, 0);
-    }
-    writeBytes(out, salt);
-    std::vector<std::uint8_t> master = masterKey_;
-    master.resize(kMasterKeySize, 0);
-    writeBytes(out, master);
+    WalletDatPayload payload;
+    payload.masterKey = masterKey_;
+    payload.encrypted = encrypted_;
+    payload.salt = salt_;
+    payload.keyMode = keyMode_;
+    payload.lastIndex = lastIndex_;
+    payload.incomingTransactions = incomingTransactions_;
+    save_wallet_dat(path, payload);
 }
 
 std::vector<std::uint8_t> WalletStore::getMasterKeyBytes(const std::string& passphrase) const {
@@ -375,6 +337,21 @@ std::string WalletStore::publicKeyToAddress(const std::string& publicKeyHex) con
     payload.push_back(kAddressVersion);
     payload.insert(payload.end(), hash160.begin(), hash160.end());
     return encodeBase58Check(payload);
+}
+
+std::string WalletStore::deriveAddress(std::uint32_t index, const std::string& passphrase) const {
+    auto privateKeyHex = derivePrivateKeyHex(index, passphrase);
+    auto publicKeyHex = privateKeyHexToPublicKey(privateKeyHex);
+    return publicKeyToAddress(publicKeyHex);
+}
+
+void WalletStore::addIncomingTransaction(const Transaction& tx, const std::string& walletAddress) {
+    require(tx.to == walletAddress, "Transaction entrante ne correspond pas a l'adresse.");
+    incomingTransactions_.push_back(tx);
+}
+
+const std::vector<Transaction>& WalletStore::incomingTransactions() const {
+    return incomingTransactions_;
 }
 
 } // namespace wallet
