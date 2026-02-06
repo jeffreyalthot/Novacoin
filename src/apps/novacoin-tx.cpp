@@ -21,6 +21,9 @@ void printUsage() {
               << "  novacoin-tx id <serialized_tx>\n"
               << "  novacoin-tx summary <serialized_tx>\n"
               << "  novacoin-tx addresses <serialized_tx>\n"
+              << "  novacoin-tx from <serialized_tx>\n"
+              << "  novacoin-tx to <serialized_tx>\n"
+              << "  novacoin-tx amount <serialized_tx>\n"
               << "  novacoin-tx amounts <serialized_tx>\n"
               << "  novacoin-tx fee <serialized_tx>\n"
               << "  novacoin-tx total <serialized_tx>\n"
@@ -78,6 +81,18 @@ void printTransactionAddresses(const Transaction& tx) {
     std::cout << "Addresses\n"
               << "  from: " << tx.from << "\n"
               << "  to: " << tx.to << "\n";
+}
+
+void printTransactionFrom(const Transaction& tx) {
+    std::cout << tx.from << "\n";
+}
+
+void printTransactionTo(const Transaction& tx) {
+    std::cout << tx.to << "\n";
+}
+
+void printTransactionAmount(const Transaction& tx) {
+    std::cout << std::fixed << std::setprecision(8) << Transaction::toNOVA(tx.amount) << "\n";
 }
 
 void printTransactionAmounts(const Transaction& tx) {
@@ -164,6 +179,36 @@ int main(int argc, char* argv[]) {
             }
             const Transaction tx = Transaction::deserialize(argv[2]);
             printTransactionAddresses(tx);
+            return 0;
+        }
+
+        if (command == "from") {
+            if (argc != 3) {
+                printUsage();
+                return 1;
+            }
+            const Transaction tx = Transaction::deserialize(argv[2]);
+            printTransactionFrom(tx);
+            return 0;
+        }
+
+        if (command == "to") {
+            if (argc != 3) {
+                printUsage();
+                return 1;
+            }
+            const Transaction tx = Transaction::deserialize(argv[2]);
+            printTransactionTo(tx);
+            return 0;
+        }
+
+        if (command == "amount") {
+            if (argc != 3) {
+                printUsage();
+                return 1;
+            }
+            const Transaction tx = Transaction::deserialize(argv[2]);
+            printTransactionAmount(tx);
             return 0;
         }
 

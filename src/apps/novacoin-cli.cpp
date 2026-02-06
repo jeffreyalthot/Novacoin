@@ -28,6 +28,8 @@ void printUsage() {
               << "  novacoin-cli mempool-stats\n"
               << "  novacoin-cli mempool [limit]\n"
               << "  novacoin-cli mempool-ids [limit]\n"
+              << "  novacoin-cli mempool-fees\n"
+              << "  novacoin-cli mempool-age\n"
               << "  novacoin-cli difficulty\n"
               << "  novacoin-cli time\n"
               << "  novacoin-cli reorgs\n"
@@ -43,6 +45,7 @@ void printUsage() {
               << "  novacoin-cli blocks-sync-stop <max_count> <stop_hash> [locator_hash ...]\n"
               << "  novacoin-cli sync-status <max_count> [--stop <stop_hash>] [locator_hash ...]\n"
               << "  novacoin-cli block <height|hash>\n"
+              << "  novacoin-cli block-hash <height>\n"
               << "  novacoin-cli blocks <max_count>\n"
               << "  novacoin-cli tx <txid>\n"
               << "  novacoin-cli history <address> [limit] [--confirmed-only]\n"
@@ -51,6 +54,7 @@ void printUsage() {
               << "  novacoin-cli supply [height]\n"
               << "  novacoin-cli params\n"
               << "  novacoin-cli supply-audit <start_height> <max_count>\n"
+              << "  novacoin-cli chain-health\n"
               << "  novacoin-cli height\n"
               << "  novacoin-cli tip\n";
 }
@@ -259,6 +263,39 @@ int main(int argc, char* argv[]) {
             return 0;
         }
 
+        if (command == "mempool-fees") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+
+            const auto stats = chain.getMempoolStats();
+            std::cout << "Mempool fees\n"
+                      << "  tx_count=" << stats.transactionCount << "\n"
+                      << "  total_fees=" << std::fixed << std::setprecision(8)
+                      << Transaction::toNOVA(stats.totalFees) << " NOVA\n"
+                      << "  min_fee=" << Transaction::toNOVA(stats.minFee) << " NOVA\n"
+                      << "  median_fee=" << Transaction::toNOVA(stats.medianFee) << " NOVA\n"
+                      << "  max_fee=" << Transaction::toNOVA(stats.maxFee) << " NOVA\n";
+            return 0;
+        }
+
+        if (command == "mempool-age") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+
+            const auto stats = chain.getMempoolStats();
+            std::cout << "Mempool ages\n"
+                      << "  tx_count=" << stats.transactionCount << "\n"
+                      << "  oldest_ts=" << stats.oldestTimestamp << "\n"
+                      << "  newest_ts=" << stats.newestTimestamp << "\n"
+                      << "  min_age_s=" << stats.minAgeSeconds << "\n"
+                      << "  median_age_s=" << stats.medianAgeSeconds << "\n"
+                      << "  max_age_s=" << stats.maxAgeSeconds << "\n";
+            return 0;
+        }
 
         if (command == "difficulty") {
             if (argc != 2) {
@@ -540,6 +577,22 @@ int main(int argc, char* argv[]) {
             return 0;
         }
 
+        if (command == "block-hash") {
+            if (argc != 3) {
+                printUsage();
+                return 1;
+            }
+
+            const std::size_t height = parseSize(argv[2], "height");
+            const auto summary = chain.getBlockSummaryByHeight(height);
+            if (!summary.has_value()) {
+                std::cout << "block_not_found\n";
+                return 0;
+            }
+            std::cout << "block_hash=" << summary->hash << "\n";
+            return 0;
+        }
+
         if (command == "blocks") {
             if (argc != 3) {
                 printUsage();
@@ -732,6 +785,21 @@ int main(int argc, char* argv[]) {
                           << " cap_ok=" << (entry.supplyWithinCap ? "yes" : "no")
                           << " hash=" << entry.hash << "\n";
             }
+            return 0;
+        }
+
+        if (command == "chain-health") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+            std::cout << "Chain health\n"
+                      << "  height=" << (chain.getBlockCount() - 1) << "\n"
+                      << "  chain_valid=" << std::boolalpha << chain.isValid() << "\n"
+                      << "  cumulative_work=" << chain.getCumulativeWork() << "\n"
+                      << "  reorg_count=" << chain.getReorgCount() << "\n"
+                      << "  last_reorg_depth=" << chain.getLastReorgDepth() << "\n"
+                      << "  pending_tx=" << chain.getPendingTransactions().size() << "\n";
             return 0;
         }
 
