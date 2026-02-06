@@ -10,6 +10,9 @@ set(NOVACOIN_CORE_SOURCES
     src/network/p2p_protocol.cpp
     src/network/seed_registry.cpp
     src/rpc/rpc_context.cpp
+    src/rpc/rpc_dispatcher.cpp
+    src/rpc/rpc_server.cpp
+    src/rpc/rpc_types.cpp
     src/storage/block_storage.cpp
     src/storage/chain_snapshot.cpp
     src/utils/logger.cpp
