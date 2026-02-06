@@ -46,6 +46,21 @@ Block::Block(std::uint64_t index,
     hash_ = computeHash();
 }
 
+Block::Block(std::uint64_t index,
+             std::string previousHash,
+             std::vector<Transaction> transactions,
+             unsigned int difficulty,
+             std::uint64_t timestamp,
+             std::uint64_t nonce,
+             std::string hash)
+    : index_(index),
+      previousHash_(std::move(previousHash)),
+      transactions_(std::move(transactions)),
+      timestamp_(timestamp),
+      nonce_(nonce),
+      difficulty_(difficulty),
+      hash_(std::move(hash)) {}
+
 void Block::mine() {
     const std::size_t hashLength = hash_.size();
     if (difficulty_ == 0 || difficulty_ > hashLength) {

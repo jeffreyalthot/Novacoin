@@ -8,6 +8,7 @@ set(NOVACOIN_CORE_SOURCES
     src/network/peer_manager.cpp
     src/network/seed_registry.cpp
     src/rpc/rpc_context.cpp
+    src/storage/block_storage.cpp
     src/storage/chain_snapshot.cpp
     src/utils/logger.cpp
     src/validation/block_validator.cpp

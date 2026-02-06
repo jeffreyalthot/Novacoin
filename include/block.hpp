@@ -13,6 +13,13 @@ public:
           std::vector<Transaction> transactions,
           unsigned int difficulty,
           std::uint64_t timestamp = 0);
+    Block(std::uint64_t index,
+          std::string previousHash,
+          std::vector<Transaction> transactions,
+          unsigned int difficulty,
+          std::uint64_t timestamp,
+          std::uint64_t nonce,
+          std::string hash);
 
     void mine();
     bool hasValidHash() const;
