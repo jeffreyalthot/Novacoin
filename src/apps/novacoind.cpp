@@ -19,11 +19,13 @@ void printUsage() {
               << "  novacoind mine <miner> [count]\n"
               << "  novacoind submit <from> <to> <amount_nova> [fee_nova]\n"
               << "  novacoind mempool\n"
+              << "  novacoind network-stats\n"
               << "  novacoind difficulty\n"
               << "  novacoind supply\n"
               << "  novacoind consensus\n"
               << "  novacoind reorgs\n"
               << "  novacoind height\n"
+              << "  novacoind tip\n"
               << "  novacoind params\n";
 }
 
@@ -124,6 +126,27 @@ int main(int argc, char* argv[]) {
             return 0;
         }
 
+        if (command == "network-stats") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+
+            const auto stats = daemonChain.getNetworkStats();
+            std::cout << "network_stats\n"
+                      << "  block_count=" << stats.blockCount << "\n"
+                      << "  user_tx_count=" << stats.userTransactionCount << "\n"
+                      << "  coinbase_tx_count=" << stats.coinbaseTransactionCount << "\n"
+                      << "  pending_tx_count=" << stats.pendingTransactionCount << "\n"
+                      << "  total_transferred=" << std::fixed << std::setprecision(8)
+                      << Transaction::toNOVA(stats.totalTransferred) << " NOVA\n"
+                      << "  total_fees_paid=" << Transaction::toNOVA(stats.totalFeesPaid) << " NOVA\n"
+                      << "  total_mined_rewards=" << Transaction::toNOVA(stats.totalMinedRewards) << " NOVA\n"
+                      << "  median_user_tx_amount=" << Transaction::toNOVA(stats.medianUserTransactionAmount)
+                      << " NOVA\n";
+            return 0;
+        }
+
         if (command == "difficulty") {
             if (argc != 2) {
                 printUsage();
@@ -191,6 +214,24 @@ int main(int argc, char* argv[]) {
             const auto& tip = chainData.back();
             std::cout << "height=" << tip.getIndex() << "\n"
                       << "hash=" << tip.getHash() << "\n";
+            return 0;
+        }
+
+        if (command == "tip") {
+            if (argc != 2) {
+                printUsage();
+                return 1;
+            }
+            const auto& chainData = daemonChain.getChain();
+            if (chainData.empty()) {
+                std::cout << "tip=none\n";
+                return 0;
+            }
+            const auto& tip = chainData.back();
+            std::cout << "tip\n"
+                      << "  height=" << tip.getIndex() << "\n"
+                      << "  hash=" << tip.getHash() << "\n"
+                      << "  prev_hash=" << tip.getPreviousHash() << "\n";
             return 0;
         }
 

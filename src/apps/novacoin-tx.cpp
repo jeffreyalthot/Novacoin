@@ -20,9 +20,11 @@ void printUsage() {
               << "  novacoin-tx decode <serialized_tx>\n"
               << "  novacoin-tx id <serialized_tx>\n"
               << "  novacoin-tx summary <serialized_tx>\n"
+              << "  novacoin-tx addresses <serialized_tx>\n"
               << "  novacoin-tx amounts <serialized_tx>\n"
               << "  novacoin-tx fee <serialized_tx>\n"
               << "  novacoin-tx total <serialized_tx>\n"
+              << "  novacoin-tx timestamp <serialized_tx>\n"
               << "  novacoin-tx <from> <to> <amount_nova> [fee_nova]\n\n"
               << "Example:\n"
               << "  novacoin-tx create alice bob 1.25 0.10\n";
@@ -72,6 +74,12 @@ void printTransactionSummary(const Transaction& tx) {
               << "  total: " << Transaction::toNOVA(total) << " NOVA\n";
 }
 
+void printTransactionAddresses(const Transaction& tx) {
+    std::cout << "Addresses\n"
+              << "  from: " << tx.from << "\n"
+              << "  to: " << tx.to << "\n";
+}
+
 void printTransactionAmounts(const Transaction& tx) {
     const Amount total = tx.amount + tx.fee;
     std::cout << "Amounts\n"
@@ -91,6 +99,11 @@ void printTransactionTotal(const Transaction& tx) {
     std::cout << "Total\n"
               << "  total_atoms=" << total << "\n"
               << "  total_nova=" << std::fixed << std::setprecision(8) << Transaction::toNOVA(total) << "\n";
+}
+
+void printTransactionTimestamp(const Transaction& tx) {
+    std::cout << "Timestamp\n"
+              << "  ts=" << tx.timestamp << "\n";
 }
 } // namespace
 
@@ -144,6 +157,16 @@ int main(int argc, char* argv[]) {
             return 0;
         }
 
+        if (command == "addresses") {
+            if (argc != 3) {
+                printUsage();
+                return 1;
+            }
+            const Transaction tx = Transaction::deserialize(argv[2]);
+            printTransactionAddresses(tx);
+            return 0;
+        }
+
         if (command == "amounts") {
             if (argc != 3) {
                 printUsage();
@@ -171,6 +194,16 @@ int main(int argc, char* argv[]) {
             }
             const Transaction tx = Transaction::deserialize(argv[2]);
             printTransactionTotal(tx);
+            return 0;
+        }
+
+        if (command == "timestamp") {
+            if (argc != 3) {
+                printUsage();
+                return 1;
+            }
+            const Transaction tx = Transaction::deserialize(argv[2]);
+            printTransactionTimestamp(tx);
             return 0;
         }
 
