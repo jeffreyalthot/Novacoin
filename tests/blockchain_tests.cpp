@@ -516,6 +516,43 @@ void testBlocksForLocatorWithStopHashBoundsResponse() {
                "La synchronisation blocks avec stop doit commencer apres locator et s'arreter au stop hash.");
 }
 
+void testSyncStatusProvidesDeterministicWindow() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 4};
+    chain.minePendingTransactions("miner");
+    chain.minePendingTransactions("miner");
+    chain.minePendingTransactions("miner");
+
+    const std::string locatorHash = chain.getChain()[1].getHash();
+    const std::string stopHash = chain.getChain()[2].getHash();
+
+    const auto status = chain.getSyncStatus({"unknown", locatorHash}, 10, stopHash);
+    assertTrue(status.localHeight == 3, "Le status de sync doit exposer la hauteur locale courante.");
+    assertTrue(status.locatorHeight.has_value() && status.locatorHeight.value() == 1,
+               "Le status de sync doit exposer la hauteur du locator resolu.");
+    assertTrue(status.nextHeight == 2,
+               "La prochaine hauteur a synchroniser doit suivre le locator commun le plus haut.");
+    assertTrue(status.remainingBlocks == 2,
+               "Le nombre de blocs restants doit compter du point de reprise au tip.");
+    assertTrue(status.stopHeight.has_value() && status.stopHeight.value() == 2,
+               "Le stop hash doit etre resolu en hauteur lorsqu'il est connu.");
+    assertTrue(status.responseBlockCount == 1,
+               "Le nombre de blocs a renvoyer doit etre borne par le stop hash inclus.");
+}
+
+void testSyncStatusHandlesUnknownLocatorAndStop() {
+    Blockchain chain{1, Transaction::fromNOVA(25.0), 4};
+    chain.minePendingTransactions("miner");
+    chain.minePendingTransactions("miner");
+
+    const auto status = chain.getSyncStatus({"deadbeef"}, 1, "unknown-stop");
+    assertTrue(!status.locatorHeight.has_value(),
+               "Un locator inconnu ne doit pas exposer de hauteur de reprise connue.");
+    assertTrue(!status.stopHeight.has_value(), "Un stop hash inconnu ne doit pas exposer de hauteur stop.");
+    assertTrue(status.nextHeight == 0, "Sans locator resolu, la reprise doit commencer au genesis.");
+    assertTrue(status.responseBlockCount == 1,
+               "Quand le stop est inconnu, la reponse doit rester bornee par max_count.");
+}
+
 void testHeadersForLocatorWithUnknownStopHashFallsBackToMaxCount() {
     Blockchain chain{1, Transaction::fromNOVA(25.0), 4};
     chain.minePendingTransactions("miner");
@@ -1011,6 +1048,8 @@ int main() {
         testHeadersForLocatorReturnsNextSegment();
         testHeadersForLocatorWithStopHashBoundsResponse();
         testHeadersForLocatorWithUnknownStopHashFallsBackToMaxCount();
+        testSyncStatusProvidesDeterministicWindow();
+        testSyncStatusHandlesUnknownLocatorAndStop();
         testBlocksFromHeightAndLocatorHelpers();
         testBlocksForLocatorWithStopHashBoundsResponse();
         testBlockSummaryLookupByHeightAndHash();

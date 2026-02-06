@@ -35,6 +35,7 @@ void printUsage() {
               << "  novacoin-cli blocks-from-height <start_height> <max_count>\n"
               << "  novacoin-cli blocks-sync <max_count> [locator_hash ...]\n"
               << "  novacoin-cli blocks-sync-stop <max_count> <stop_hash> [locator_hash ...]\n"
+              << "  novacoin-cli sync-status <max_count> [--stop <stop_hash>] [locator_hash ...]\n"
               << "  novacoin-cli block <height|hash>\n"
               << "  novacoin-cli blocks <max_count>\n"
               << "  novacoin-cli tx <txid>\n"
@@ -348,6 +349,51 @@ int main(int argc, char* argv[]) {
                           << Transaction::toNOVA(summary.totalFees) << " NOVA"
                           << " hash=" << summary.hash << " prev=" << summary.previousHash << "\n";
             }
+            return 0;
+        }
+
+        if (command == "sync-status") {
+            if (argc < 3) {
+                printUsage();
+                return 1;
+            }
+
+            const std::size_t maxCount = parseSize(argv[2], "max_count");
+            std::string stopHash;
+            std::vector<std::string> locatorHashes;
+            locatorHashes.reserve(static_cast<std::size_t>(argc > 3 ? argc - 3 : 0));
+
+            for (int i = 3; i < argc; ++i) {
+                const std::string arg = argv[i];
+                if (arg == "--stop") {
+                    if (i + 1 >= argc) {
+                        throw std::invalid_argument("--stop requiert un hash de bloc.");
+                    }
+                    stopHash = argv[++i];
+                    continue;
+                }
+                locatorHashes.push_back(arg);
+            }
+
+            const auto status = chain.getSyncStatus(locatorHashes, maxCount, stopHash);
+            std::cout << "sync_status\n"
+                      << "  local_height=" << status.localHeight << "\n";
+            if (status.locatorHeight.has_value()) {
+                std::cout << "  locator_height=" << status.locatorHeight.value() << "\n";
+            } else {
+                std::cout << "  locator_height=none\n";
+            }
+            std::cout << "  next_height=" << status.nextHeight << "\n"
+                      << "  remaining_blocks=" << status.remainingBlocks << "\n"
+                      << "  max_response_blocks=" << status.maxResponseBlocks << "\n";
+            if (status.stopHeight.has_value()) {
+                std::cout << "  stop_height=" << status.stopHeight.value() << "\n";
+            } else if (!stopHash.empty()) {
+                std::cout << "  stop_height=unknown\n";
+            } else {
+                std::cout << "  stop_height=none\n";
+            }
+            std::cout << "  response_blocks=" << status.responseBlockCount << "\n";
             return 0;
         }
 
