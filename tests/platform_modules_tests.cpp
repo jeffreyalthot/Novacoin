@@ -59,8 +59,12 @@ void testExtendedModuleScaffolding() {
 
     const Transaction lowFee{"alice", "bob", 10, 1, 1};
     const Transaction highFee{"alice", "bob", 10, 1, consensus::kMinRelayFee};
+    const Transaction networkTx{"network", "miner", 25, 1, 0};
+    const Transaction missingRecipient{"alice", "", 10, 1, consensus::kMinRelayFee};
     assertTrue(!mempool::accepts(lowFee), "Une transaction fee faible doit etre rejetee par la policy.");
     assertTrue(mempool::accepts(highFee), "Une transaction fee suffisante doit etre acceptee par la policy.");
+    assertTrue(!mempool::accepts(networkTx), "Les transactions coinbase ne doivent pas etre acceptees.");
+    assertTrue(!mempool::accepts(missingRecipient), "Une transaction avec destinataire vide doit etre rejetee.");
 
     Blockchain chain{1, Transaction::fromNOVA(25.0), 3};
     chain.minePendingTransactions("miner");
