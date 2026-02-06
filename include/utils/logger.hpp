@@ -33,6 +33,7 @@ public:
     void error(std::string_view component, std::string_view message);
 
     [[nodiscard]] std::vector<LogEntry> entries() const;
+    [[nodiscard]] std::vector<LogEntry> entries(std::size_t limit) const;
     [[nodiscard]] std::size_t size() const;
     [[nodiscard]] bool empty() const;
     void clear();
