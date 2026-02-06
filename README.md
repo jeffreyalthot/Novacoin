@@ -15,6 +15,9 @@ Ce README sert de **plan directeur complet** pour poser les bases techniques, é
 Le dépôt adopte une structure en dossiers pour accélérer les futures extensions :
 
 - `src/core/` et `include/core/` pour les composants transverses,
+- `src/network/` et `include/network/` pour la gestion des pairs P2P,
+- `src/storage/` et `include/storage/` pour les snapshots/abstractions de persistance,
+- `src/utils/` et `include/utils/` pour les utilitaires techniques (ex: logging),
 - `src/apps/` pour les binaires utilisateurs/opérateurs,
 - `cmake/` pour factoriser la configuration des cibles,
 - `docs/architecture/` pour documenter les conventions de croissance.

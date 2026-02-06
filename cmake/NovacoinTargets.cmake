@@ -3,6 +3,9 @@ set(NOVACOIN_CORE_SOURCES
     src/blockchain.cpp
     src/transaction.cpp
     src/core/build_info.cpp
+    src/network/peer_manager.cpp
+    src/storage/chain_snapshot.cpp
+    src/utils/logger.cpp
 )
 
 set(NOVACOIN_APP_SOURCES
