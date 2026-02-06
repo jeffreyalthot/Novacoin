@@ -6,6 +6,7 @@
 #include <limits>
 #include <sstream>
 #include <stdexcept>
+#include <vector>
 
 namespace {
 std::string toHex(std::size_t value) {
@@ -36,6 +37,32 @@ std::string Transaction::serialize() const {
     std::ostringstream out;
     out << from << '|' << to << '|' << amount << '|' << timestamp << '|' << fee;
     return out.str();
+}
+
+Transaction Transaction::deserialize(const std::string& payload) {
+    std::istringstream in(payload);
+    std::string part;
+    std::vector<std::string> parts;
+    while (std::getline(in, part, '|')) {
+        parts.push_back(part);
+    }
+
+    if (parts.size() != 5) {
+        throw std::invalid_argument("Transaction invalide: format incorrect.");
+    }
+
+    Transaction tx;
+    tx.from = parts[0];
+    tx.to = parts[1];
+    try {
+        tx.amount = static_cast<Amount>(std::stoll(parts[2]));
+        tx.timestamp = static_cast<std::uint64_t>(std::stoull(parts[3]));
+        tx.fee = static_cast<Amount>(std::stoll(parts[4]));
+    } catch (const std::exception&) {
+        throw std::invalid_argument("Transaction invalide: valeurs numeriques incorrectes.");
+    }
+
+    return tx;
 }
 
 std::string Transaction::id() const {

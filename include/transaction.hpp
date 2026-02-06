@@ -13,6 +13,7 @@ struct Transaction {
     Amount fee{0};
 
     std::string serialize() const;
+    static Transaction deserialize(const std::string& payload);
     std::string id() const;
 
     static constexpr Amount kCoin = 100'000'000;
