@@ -30,6 +30,8 @@ Le dépôt adopte une structure en dossiers pour accélérer les futures extensi
 - `test/` avec la hiérarchie `functional/`, `fuzz/`, `util/` à la manière Bitcoin Core,
 - `contrib/`, `depends/`, `build-aux/`, `m4/`, `share/` pour préparer les outillages annexes et la distribution.
 
+Plusieurs sous-dossiers de cette structure contiennent désormais un `README.md` local pour expliciter leur usage cible (tests, release notes, exemples opérateur, RPCAUTH), afin d'accélérer les contributions incrémentales.
+
 ## Outils CLI disponibles
 
 Le projet fournit maintenant plusieurs binaires cohérents avec une future architecture multi-composants :

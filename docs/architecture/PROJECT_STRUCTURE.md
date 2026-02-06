@@ -31,3 +31,15 @@ Pour faciliter l'extension du développement, le projet est organisé en dossier
 3. Garder les exécutables dans `src/apps/` pour une séparation claire entre core et apps.
 
 Cette organisation évite la concentration de tout le code au même niveau et simplifie la maintenance.
+
+## Extensions de structure ajoutées
+
+Pour rendre l'arborescence immédiatement exploitable, les dossiers historiquement vides disposent désormais d'un `README.md` local qui documente leur rôle :
+
+- `src/test/` pour les tests C++ internes au noyau,
+- `test/functional/`, `test/fuzz/`, `test/util/` pour la hiérarchie de tests inspirée de Bitcoin Core,
+- `doc/release-notes/` pour les notes de version,
+- `share/examples/` et `share/rpcauth/` pour les ressources opérateur/RPC,
+- `m4/` pour la compatibilité de structure avec des workflows Autotools.
+
+Cette approche permet de "continuer à étendre les dossiers et fichiers" sans attendre l'implémentation complète de chaque module, tout en gardant des conventions explicites.
