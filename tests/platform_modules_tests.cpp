@@ -76,6 +76,11 @@ void testExtendedModuleScaffolding() {
 
     const auto profile = wallet::defaultProfile();
     assertTrue(profile.label == "default", "Le wallet profile par defaut doit etre initialise.");
+
+    const auto systemProfile = wallet::supplementarySystemProfile();
+    assertTrue(systemProfile.label == "system-supplementaire",
+               "Le wallet system supplementaire doit etre initialise.");
+    assertTrue(systemProfile.watchOnly, "Le wallet system supplementaire doit etre en mode watch-only.");
 }
 
 void testChainSnapshotBuilder() {
