@@ -1,10 +1,10 @@
-# Novacoin
+# Novacoin Core
 
-Implémentation cohérente d'une blockchain simplifiée en C++ pour le projet Novacoin.
+Implémentation cohérente d'une blockchain simplifiée en C++ pour le projet **Novacoin Core**.
 
 ## Vision du projet
 
-Construire **Novacoin** comme une blockchain **Proof of Work (PoW)** robuste, progressive et auditable, avec une politique monétaire stricte plafonnée à **29 000 000.00000000 NOVA**.
+Construire **Novacoin Core** comme une blockchain **Proof of Work (PoW)** robuste, progressive et auditable, avec une politique monétaire stricte plafonnée à **29 000 000.00000000 NOVA**.
 
 Ce README sert de **plan directeur complet** pour poser les bases techniques, économiques, de sécurité et d'exploitation du réseau.
 
@@ -26,8 +26,8 @@ Le dépôt adopte une structure en dossiers pour accélérer les futures extensi
 - `src/apps/` pour les binaires utilisateurs/opérateurs,
 - `cmake/` pour factoriser la configuration des cibles,
 - `docs/architecture/` pour documenter les conventions de croissance.
-- `doc/` pour une compatibilité de structure avec Bitcoin Core (release notes, guides opérateur),
-- `test/` avec la hiérarchie `functional/`, `fuzz/`, `util/` à la manière Bitcoin Core,
+- `doc/` pour documenter les notes de version et guides opérateur de Novacoin Core,
+- `test/` avec la hiérarchie `functional/`, `fuzz/`, `util/` héritée d'un fork de Bitcoin Core,
 - `contrib/`, `depends/`, `build-aux/`, `m4/`, `share/` pour préparer les outillages annexes et la distribution.
 
 Plusieurs sous-dossiers de cette structure contiennent désormais un `README.md` local pour expliciter leur usage cible (tests, release notes, exemples opérateur, RPCAUTH), afin d'accélérer les contributions incrémentales.
