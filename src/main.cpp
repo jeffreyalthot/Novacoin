@@ -1,4 +1,5 @@
 #include "blockchain.hpp"
+#include "core/build_info.hpp"
 
 #include <chrono>
 #include <iostream>
@@ -24,6 +25,8 @@ void printHistory(const Blockchain& chain, const std::string& address) {
 int main() {
     try {
         Blockchain novacoin{4, Transaction::fromNOVA(25.0), 2};
+
+        std::cout << novacoin::projectLayoutSummary() << "\n";
 
         novacoin.minePendingTransactions("miner1");
         novacoin.createTransaction(
