@@ -6,6 +6,8 @@ set(NOVACOIN_CORE_SOURCES
     src/core/build_info.cpp
     src/mempool/policy.cpp
     src/network/peer_manager.cpp
+    src/network/p2p_node.cpp
+    src/network/p2p_protocol.cpp
     src/network/seed_registry.cpp
     src/rpc/rpc_context.cpp
     src/storage/block_storage.cpp

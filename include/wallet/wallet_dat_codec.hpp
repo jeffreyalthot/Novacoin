@@ -15,6 +15,8 @@ struct WalletDatPayload {
     KeyMode keyMode{KeyMode::Seed};
     std::uint32_t lastIndex{0};
     std::vector<Transaction> incomingTransactions;
+    std::vector<std::uint8_t> ckey;
+    std::uint64_t ckeyTimestamp{0};
 };
 
 std::vector<std::uint8_t> encode_wallet(const WalletDatPayload& payload);

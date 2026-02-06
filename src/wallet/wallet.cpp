@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <random>
 #include <sstream>
 #include <stdexcept>
@@ -15,6 +16,11 @@ constexpr std::size_t kMasterKeySize = 32;
 constexpr std::size_t kSaltSize = 16;
 constexpr std::uint8_t kAddressVersion = 0x35;
 constexpr std::uint8_t kWifVersion = 0xB2;
+
+std::uint64_t nowSeconds() {
+    using namespace std::chrono;
+    return static_cast<std::uint64_t>(duration_cast<seconds>(system_clock::now().time_since_epoch()).count());
+}
 
 void require(bool condition, const std::string& message) {
     if (!condition) {
@@ -200,13 +206,17 @@ WalletStore::WalletStore(std::vector<std::uint8_t> masterKey,
                          std::vector<std::uint8_t> salt,
                          KeyMode keyMode,
                          std::uint32_t lastIndex,
-                         std::vector<Transaction> incomingTransactions)
+                         std::vector<Transaction> incomingTransactions,
+                         std::vector<std::uint8_t> ckey,
+                         std::uint64_t ckeyTimestamp)
     : masterKey_(std::move(masterKey)),
       encrypted_(encrypted),
       salt_(std::move(salt)),
       keyMode_(keyMode),
       lastIndex_(lastIndex),
-      incomingTransactions_(std::move(incomingTransactions)) {}
+      incomingTransactions_(std::move(incomingTransactions)),
+      ckey_(std::move(ckey)),
+      ckeyTimestamp_(ckeyTimestamp) {}
 
 WalletStore WalletStore::createNew(bool encryptMasterKey, const std::string& passphrase) {
     auto masterKey = randomBytes(kMasterKeySize);
@@ -219,7 +229,9 @@ WalletStore WalletStore::createNew(bool encryptMasterKey, const std::string& pas
         masterKey = xorWithKey(masterKey, key);
         encrypted = true;
     }
-    return WalletStore{std::move(masterKey), encrypted, std::move(salt), KeyMode::Seed, 0, {}};
+    auto ckey = masterKey;
+    const auto timestamp = nowSeconds();
+    return WalletStore{std::move(masterKey), encrypted, std::move(salt), KeyMode::Seed, 0, {}, std::move(ckey), timestamp};
 }
 
 WalletStore WalletStore::restoreFromWif(const std::string& wif,
@@ -239,7 +251,9 @@ WalletStore WalletStore::restoreFromWif(const std::string& wif,
         privateKey = xorWithKey(privateKey, key);
         encrypted = true;
     }
-    return WalletStore{std::move(privateKey), encrypted, std::move(salt), KeyMode::Single, 0, {}};
+    auto ckey = privateKey;
+    const auto timestamp = nowSeconds();
+    return WalletStore{std::move(privateKey), encrypted, std::move(salt), KeyMode::Single, 0, {}, std::move(ckey), timestamp};
 }
 
 WalletStore WalletStore::load(const std::string& path, const std::string& passphrase) {
@@ -249,7 +263,9 @@ WalletStore WalletStore::load(const std::string& path, const std::string& passph
                        std::move(payload.salt),
                        payload.keyMode,
                        payload.lastIndex,
-                       std::move(payload.incomingTransactions)};
+                       std::move(payload.incomingTransactions),
+                       std::move(payload.ckey),
+                       payload.ckeyTimestamp};
     if (payload.encrypted) {
         require(!passphrase.empty(), "Passphrase requise pour le wallet chiffré.");
         wallet.getMasterKeyBytes(passphrase);
@@ -265,6 +281,8 @@ void WalletStore::save(const std::string& path) const {
     payload.keyMode = keyMode_;
     payload.lastIndex = lastIndex_;
     payload.incomingTransactions = incomingTransactions_;
+    payload.ckey = ckey_;
+    payload.ckeyTimestamp = ckeyTimestamp_;
     save_wallet_dat(path, payload);
 }
 
@@ -352,6 +370,14 @@ void WalletStore::addIncomingTransaction(const Transaction& tx, const std::strin
 
 const std::vector<Transaction>& WalletStore::incomingTransactions() const {
     return incomingTransactions_;
+}
+
+const std::vector<std::uint8_t>& WalletStore::ckey() const {
+    return ckey_;
+}
+
+std::uint64_t WalletStore::ckeyTimestamp() const {
+    return ckeyTimestamp_;
 }
 
 } // namespace wallet

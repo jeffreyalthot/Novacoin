@@ -37,6 +37,8 @@ class WalletStore {
 
     void addIncomingTransaction(const Transaction& tx, const std::string& walletAddress);
     [[nodiscard]] const std::vector<Transaction>& incomingTransactions() const;
+    [[nodiscard]] const std::vector<std::uint8_t>& ckey() const;
+    [[nodiscard]] std::uint64_t ckeyTimestamp() const;
 
   private:
     WalletStore(std::vector<std::uint8_t> masterKey,
@@ -44,7 +46,9 @@ class WalletStore {
                 std::vector<std::uint8_t> salt,
                 KeyMode keyMode,
                 std::uint32_t lastIndex,
-                std::vector<Transaction> incomingTransactions);
+                std::vector<Transaction> incomingTransactions,
+                std::vector<std::uint8_t> ckey,
+                std::uint64_t ckeyTimestamp);
 
     [[nodiscard]] std::vector<std::uint8_t> getMasterKeyBytes(const std::string& passphrase) const;
 
@@ -54,6 +58,8 @@ class WalletStore {
     KeyMode keyMode_ = KeyMode::Seed;
     std::uint32_t lastIndex_ = 0;
     std::vector<Transaction> incomingTransactions_;
+    std::vector<std::uint8_t> ckey_;
+    std::uint64_t ckeyTimestamp_ = 0;
 };
 
 } // namespace wallet
