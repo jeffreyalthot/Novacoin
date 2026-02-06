@@ -41,7 +41,8 @@ void printUsage() {
               << "  novacoin-cli tx <txid>\n"
               << "  novacoin-cli history <address> [limit] [--confirmed-only]\n"
               << "  novacoin-cli consensus\n"
-              << "  novacoin-cli monetary [height]\n";
+              << "  novacoin-cli monetary [height]\n"
+              << "  novacoin-cli supply-audit <start_height> <max_count>\n";
 }
 
 double parseDouble(const std::string& raw, const std::string& field) {
@@ -572,6 +573,31 @@ int main(int argc, char* argv[]) {
                       << " NOVA\n"
                       << "  next_halving_height=" << projection.nextHalvingHeight << "\n"
                       << "  next_subsidy=" << Transaction::toNOVA(projection.nextSubsidy) << " NOVA\n";
+            return 0;
+        }
+
+        if (command == "supply-audit") {
+            if (argc != 4) {
+                printUsage();
+                return 1;
+            }
+
+            const std::size_t startHeight = parseSize(argv[2], "start_height");
+            const std::size_t maxCount = parseSize(argv[3], "max_count");
+            const auto audit = chain.getSupplyAudit(startHeight, maxCount);
+            std::cout << "supply_audit=" << audit.size() << "\n";
+            for (const auto& entry : audit) {
+                std::cout << "  h=" << entry.height
+                          << " subsidy=" << std::fixed << std::setprecision(8)
+                          << Transaction::toNOVA(entry.blockSubsidy) << " NOVA"
+                          << " fees=" << Transaction::toNOVA(entry.totalFees) << " NOVA"
+                          << " minted=" << Transaction::toNOVA(entry.mintedReward) << " NOVA"
+                          << " max_allowed=" << Transaction::toNOVA(entry.maxAllowedReward) << " NOVA"
+                          << " supply=" << Transaction::toNOVA(entry.cumulativeSupply) << " NOVA"
+                          << " reward_ok=" << (entry.rewardWithinLimit ? "yes" : "no")
+                          << " cap_ok=" << (entry.supplyWithinCap ? "yes" : "no")
+                          << " hash=" << entry.hash << "\n";
+            }
             return 0;
         }
 
