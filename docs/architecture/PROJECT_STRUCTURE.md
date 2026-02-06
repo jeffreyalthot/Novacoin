@@ -3,11 +3,21 @@
 Pour faciliter l'extension du développement, le projet est organisé en dossiers dédiés :
 
 - `src/core/` : composants du noyau partagés (informations build, utilitaires transverses).
+- `src/consensus/` : paramètres de consensus partageables (timings, règles réseau).
+- `src/mempool/` : politique mempool et règles d’acceptation transactionnelle.
+- `src/validation/` : validateurs spécialisés (ex: forme basique des blocs).
+- `src/rpc/` : structures de contexte et couches de service RPC.
+- `src/wallet/` : profilage wallet et métadonnées utilisateur.
 - `src/network/` : primitives de gestion de pairs et orchestration réseau.
 - `src/storage/` : snapshots et briques liées à la persistance.
 - `src/utils/` : outils transverses (journalisation, helpers techniques).
 - `src/apps/` : points d'entrée applicatifs (CLI, daemon, wallet, regtest).
 - `include/core/` : en-têtes publics du noyau transversal.
+- `include/consensus/` : interfaces publiques des paramètres de consensus.
+- `include/mempool/` : interfaces publiques de politique mempool.
+- `include/validation/` : interfaces publiques des validateurs dédiés.
+- `include/rpc/` : interfaces publiques de contexte RPC.
+- `include/wallet/` : interfaces publiques liées aux profils wallet.
 - `include/network/` : interfaces publiques du module réseau.
 - `include/storage/` : interfaces publiques du module stockage.
 - `include/utils/` : interfaces publiques des utilitaires.

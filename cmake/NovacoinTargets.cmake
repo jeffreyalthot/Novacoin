@@ -2,10 +2,15 @@ set(NOVACOIN_CORE_SOURCES
     src/block.cpp
     src/blockchain.cpp
     src/transaction.cpp
+    src/consensus/chain_params.cpp
     src/core/build_info.cpp
+    src/mempool/policy.cpp
     src/network/peer_manager.cpp
+    src/rpc/rpc_context.cpp
     src/storage/chain_snapshot.cpp
     src/utils/logger.cpp
+    src/validation/block_validator.cpp
+    src/wallet/wallet_profile.cpp
 )
 
 set(NOVACOIN_APP_SOURCES
