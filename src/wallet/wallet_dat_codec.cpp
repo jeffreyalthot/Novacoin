@@ -7,7 +7,7 @@
 namespace wallet {
 namespace {
 constexpr std::array<std::uint8_t, 4> kMagic{{'N', 'V', 'W', '1'}};
-constexpr std::uint8_t kVersion = 2;
+constexpr std::uint8_t kVersion = 3;
 constexpr std::size_t kMasterKeySize = 32;
 constexpr std::size_t kSaltSize = 16;
 
@@ -126,6 +126,9 @@ std::vector<std::uint8_t> encode_wallet(const WalletDatPayload& payload) {
     for (const auto& tx : payload.incomingTransactions) {
         appendTransaction(out, tx);
     }
+    appendUint32LE(out, static_cast<std::uint32_t>(payload.ckey.size()));
+    appendBytes(out, payload.ckey);
+    appendUint64LE(out, payload.ckeyTimestamp);
     return out;
 }
 
@@ -134,7 +137,7 @@ WalletDatPayload decode_wallet(const std::vector<std::uint8_t>& data) {
     auto magic = readBytes(data, offset, kMagic.size());
     require(std::equal(magic.begin(), magic.end(), kMagic.begin()), "wallet.dat invalide.");
     auto version = readByte(data, offset);
-    require(version == 1 || version == 2, "Version wallet inconnue.");
+    require(version == 1 || version == 2 || version == 3, "Version wallet inconnue.");
     auto flags = readByte(data, offset);
     bool encrypted = (flags & 0x1) != 0;
     bool singleKey = (flags & 0x2) != 0;
@@ -147,12 +150,17 @@ WalletDatPayload decode_wallet(const std::vector<std::uint8_t>& data) {
     payload.salt = std::move(salt);
     payload.keyMode = singleKey ? KeyMode::Single : KeyMode::Seed;
     payload.lastIndex = lastIndex;
-    if (version == 2) {
+    if (version >= 2) {
         auto txCount = readUint32LE(data, offset);
         payload.incomingTransactions.reserve(txCount);
         for (std::uint32_t i = 0; i < txCount; ++i) {
             payload.incomingTransactions.push_back(readTransaction(data, offset));
         }
+    }
+    if (version >= 3) {
+        auto ckeySize = readUint32LE(data, offset);
+        payload.ckey = readBytes(data, offset, ckeySize);
+        payload.ckeyTimestamp = readUint64LE(data, offset);
     }
     require(offset == data.size(), "wallet.dat contient des donnees en trop.");
     return payload;
