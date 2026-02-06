@@ -26,6 +26,9 @@ Le dépôt adopte une structure en dossiers pour accélérer les futures extensi
 - `src/apps/` pour les binaires utilisateurs/opérateurs,
 - `cmake/` pour factoriser la configuration des cibles,
 - `docs/architecture/` pour documenter les conventions de croissance.
+- `doc/` pour une compatibilité de structure avec Bitcoin Core (release notes, guides opérateur),
+- `test/` avec la hiérarchie `functional/`, `fuzz/`, `util/` à la manière Bitcoin Core,
+- `contrib/`, `depends/`, `build-aux/`, `m4/`, `share/` pour préparer les outillages annexes et la distribution.
 
 ## Outils CLI disponibles
 
