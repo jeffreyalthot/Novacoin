@@ -200,12 +200,14 @@ private:
                                                  const std::vector<Block>& rhs) const;
     [[nodiscard]] std::optional<std::size_t> findBlockHeightByHash(const std::string& hash) const;
     [[nodiscard]] BlockSummary makeBlockSummary(const Block& block) const;
+    void rebuildHashIndex();
 
     unsigned int initialDifficulty_;
     Amount miningReward_;
     std::size_t maxTransactionsPerBlock_;
     std::vector<Block> chain_;
     std::vector<Transaction> pendingTransactions_;
+    std::unordered_map<std::string, std::size_t> hashToHeight_;
     std::size_t lastReorgDepth_ = 0;
     std::size_t lastForkHeight_ = 0;
     std::string lastForkHash_;

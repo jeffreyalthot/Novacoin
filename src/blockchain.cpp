@@ -60,6 +60,7 @@ Blockchain::Blockchain(unsigned int difficulty, Amount miningReward, std::size_t
       maxTransactionsPerBlock_(maxTransactionsPerBlock),
       chain_({createGenesisBlock()}),
       pendingTransactions_(),
+      hashToHeight_(),
       lastReorgDepth_(0),
       lastForkHeight_(0),
       lastForkHash_(),
@@ -70,6 +71,7 @@ Blockchain::Blockchain(unsigned int difficulty, Amount miningReward, std::size_t
     if (miningReward_ < 0) {
         throw std::invalid_argument("La récompense de minage doit être >= 0.");
     }
+    rebuildHashIndex();
 }
 
 Block Blockchain::createGenesisBlock() const {
@@ -291,6 +293,7 @@ void Blockchain::minePendingTransactions(const std::string& minerAddress) {
                       expectedDifficultyAtHeight(chain_.size(), chain_)};
     blockToMine.mine();
     chain_.push_back(blockToMine);
+    hashToHeight_.emplace(blockToMine.getHash(), chain_.size() - 1);
 
     std::unordered_map<std::string, bool> minedIds;
     for (const auto& tx : transactionsToMine) {
@@ -772,6 +775,7 @@ bool Blockchain::tryAdoptChain(const std::vector<Block>& candidateChain) {
     const std::vector<Block> previousChain = chain_;
     const std::size_t sharedPrefix = commonPrefixLength(previousChain, candidateChain);
     chain_ = candidateChain;
+    rebuildHashIndex();
     rebuildPendingTransactionsAfterReorg(previousChain, chain_);
 
     const std::size_t detachedBlocks = previousChain.size() > sharedPrefix ? previousChain.size() - sharedPrefix : 0;
@@ -783,6 +787,13 @@ bool Blockchain::tryAdoptChain(const std::vector<Block>& candidateChain) {
     return true;
 }
 
+void Blockchain::rebuildHashIndex() {
+    hashToHeight_.clear();
+    hashToHeight_.reserve(chain_.size());
+    for (std::size_t i = 0; i < chain_.size(); ++i) {
+        hashToHeight_.emplace(chain_[i].getHash(), i);
+    }
+}
 
 std::size_t Blockchain::commonPrefixLength(const std::vector<Block>& lhs, const std::vector<Block>& rhs) const {
     const std::size_t limit = std::min(lhs.size(), rhs.size());
@@ -1096,16 +1107,10 @@ std::optional<std::size_t> Blockchain::findHighestLocatorMatch(
         return std::nullopt;
     }
 
-    std::unordered_map<std::string, std::size_t> hashToHeight;
-    hashToHeight.reserve(chain_.size());
-    for (std::size_t i = 0; i < chain_.size(); ++i) {
-        hashToHeight.emplace(chain_[i].getHash(), i);
-    }
-
     std::optional<std::size_t> best;
     for (const auto& hash : locatorHashes) {
-        const auto it = hashToHeight.find(hash);
-        if (it == hashToHeight.end()) {
+        const auto it = hashToHeight_.find(hash);
+        if (it == hashToHeight_.end()) {
             continue;
         }
 
@@ -1122,10 +1127,9 @@ std::optional<std::size_t> Blockchain::findBlockHeightByHash(const std::string& 
         return std::nullopt;
     }
 
-    for (std::size_t i = 0; i < chain_.size(); ++i) {
-        if (chain_[i].getHash() == hash) {
-            return i;
-        }
+    const auto it = hashToHeight_.find(hash);
+    if (it != hashToHeight_.end()) {
+        return it->second;
     }
 
     return std::nullopt;
