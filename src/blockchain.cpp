@@ -47,6 +47,11 @@ bool hasNonDecreasingTimestamps(const std::vector<Transaction>& transactions) {
     return true;
 }
 
+std::size_t boundedEndHeight(std::size_t startHeight, std::size_t maxCount, std::size_t chainSize) {
+    const std::size_t remaining = chainSize - startHeight;
+    return startHeight + std::min(maxCount, remaining);
+}
+
 } // namespace
 
 Blockchain::Blockchain(unsigned int difficulty, Amount miningReward, std::size_t maxTransactionsPerBlock)
@@ -1012,7 +1017,7 @@ std::vector<BlockHeaderInfo> Blockchain::getHeadersFromHeight(std::size_t startH
         return {};
     }
 
-    const std::size_t end = std::min(chain_.size(), startHeight + maxCount);
+    const std::size_t end = boundedEndHeight(startHeight, maxCount, chain_.size());
     std::vector<BlockHeaderInfo> headers;
     headers.reserve(end - startHeight);
 
@@ -1125,7 +1130,7 @@ std::vector<BlockSummary> Blockchain::getBlocksFromHeight(std::size_t startHeigh
         return {};
     }
 
-    const std::size_t end = std::min(chain_.size(), startHeight + maxCount);
+    const std::size_t end = boundedEndHeight(startHeight, maxCount, chain_.size());
     std::vector<BlockSummary> blocks;
     blocks.reserve(end - startHeight);
 
