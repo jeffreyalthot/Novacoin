@@ -37,11 +37,11 @@ void Logger::log(LogLevel level, std::string_view component, std::string_view me
         return;
     }
 
-    if (entries_.size() == maxEntries_) {
+    if (entries_.size() >= maxEntries_) {
         entries_.pop_front();
     }
 
-    entries_.push_back(
+    entries_.emplace_back(
         LogEntry{nowSeconds(), level, std::string(component), std::string(message)});
 }
 
@@ -63,7 +63,10 @@ void Logger::error(std::string_view component, std::string_view message) {
 
 std::vector<LogEntry> Logger::entries() const {
     std::lock_guard<std::mutex> guard(mutex_);
-    return std::vector<LogEntry>(entries_.begin(), entries_.end());
+    std::vector<LogEntry> snapshot;
+    snapshot.reserve(entries_.size());
+    snapshot.assign(entries_.begin(), entries_.end());
+    return snapshot;
 }
 
 std::size_t Logger::size() const {
