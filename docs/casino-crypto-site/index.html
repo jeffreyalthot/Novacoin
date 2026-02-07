@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NovaCoin Casino Crypto</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <header class="hero">
+      <nav class="nav">
+        <div class="logo">NovaCoin Casino</div>
+        <div class="chip">Crypto-only</div>
+      </nav>
+      <div class="hero-content">
+        <div>
+          <p class="eyebrow">Sécurisé · Rapide · 100% Crypto</p>
+          <h1>Votre casino crypto dédié à la génération de clés privées.</h1>
+          <p class="lead">
+            Générez et stockez localement des clés privées, puis convertissez-les en
+            adresses Ethereum pour un usage immédiat. Toutes les opérations restent
+            côté navigateur.
+          </p>
+          <div class="cta-row">
+            <button class="primary" id="generateKey">Générer une clé privée</button>
+            <button class="ghost" id="clearStorage">Effacer le stockage local</button>
+          </div>
+        </div>
+        <div class="hero-card">
+          <h2>État réseau (Infura)</h2>
+          <div class="card-row">
+            <span>Réseau</span>
+            <strong id="networkName">Chargement…</strong>
+          </div>
+          <div class="card-row">
+            <span>Dernier bloc</span>
+            <strong id="latestBlock">–</strong>
+          </div>
+          <div class="card-row">
+            <span>API Key</span>
+            <strong class="mono">16c8…57a4</strong>
+          </div>
+          <p class="note">
+            L’API Infura est utilisée uniquement pour l’état réseau. Les clés privées
+            ne quittent jamais votre navigateur.
+          </p>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Clé privée active</h2>
+          <span class="tag">Stockée localement</span>
+        </div>
+        <div class="panel-body">
+          <label for="privateKey" class="field-label">Clé privée (hex)</label>
+          <textarea id="privateKey" class="field" rows="3" readonly></textarea>
+          <label for="address" class="field-label">Adresse Ethereum</label>
+          <input id="address" class="field" type="text" readonly />
+          <div class="action-row">
+            <button class="ghost" id="copyPrivateKey">Copier la clé privée</button>
+            <button class="ghost" id="copyAddress">Copier l’adresse</button>
+          </div>
+          <p class="disclaimer">
+            Attention : stocker une clé privée dans le navigateur n’est pas
+            recommandé pour des fonds réels. Utilisez un wallet sécurisé pour
+            la production.
+          </p>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Conversion clé → adresse</h2>
+          <span class="tag">Ethereum</span>
+        </div>
+        <div class="panel-body">
+          <label for="convertInput" class="field-label">Entrer une clé privée</label>
+          <input id="convertInput" class="field" type="text" placeholder="0x..." />
+          <button class="primary" id="convertKey">Convertir</button>
+          <div class="result" id="convertResult">Adresse générée : —</div>
+          <div class="result muted" id="convertError"></div>
+        </div>
+      </section>
+
+      <section class="panel panel-list">
+        <div class="panel-header">
+          <h2>Historique local</h2>
+          <span class="tag">Jusqu’à 5 clés</span>
+        </div>
+        <div class="panel-body" id="historyList">
+          <p class="muted">Aucune clé sauvegardée pour le moment.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>NovaCoin Casino · Démo éducative · Sécurisez vos fonds.</p>
+    </footer>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
