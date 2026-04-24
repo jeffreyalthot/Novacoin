@@ -58,6 +58,19 @@ Le mode RPC intégré de `novacoind` permet d'appeler les méthodes `rpc.*` et `
 - `novacoind rpc node.status`
 - `novacoind rpc node.mine node-miner 2`
 
+## Règle de contribution ELIT21 (obligatoire)
+
+Pour la base Python ELIT21, les fichiers suivants sont considérés comme le **socle obligatoire** :
+
+- `elit21_chainstate.py`
+- `elit21_cli.py`
+- `elit21_tx.py`
+- `elit21_util.py`
+- `elit21_wallet.py`
+- `elit21d.py`
+
+Quand un nouveau fichier est ajouté au projet, les ajustements nécessaires dans ces **6 fichiers** doivent être faits **obligatoirement**, avec ajout du **maximum de logs console** pour faciliter le debug, la traçabilité et l’observabilité.
+
 
 - ✅ **Phase 1 (noyau single-node)** : chaîne locale, mempool, minage PoW, validation globale.
 - ✅ **Phase 2 (économie NOVA / hard cap)** : récompense + frais bornés, halving, plafond strict `29M`.
