@@ -3,17 +3,31 @@
 #include "rpc/rpc_dispatcher.hpp"
 #include "rpc/rpc_server.hpp"
 #include "rpc/rpc_types.hpp"
+#include "network/p2p_node.hpp"
 #include "transaction.hpp"
 
+#include <atomic>
 #include <chrono>
+#include <csignal>
 #include <exception>
 #include <iomanip>
 #include <iostream>
+#include <optional>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <vector>
 
 namespace {
+constexpr const char* kDefaultNodeId = "novacoind";
+constexpr const char* kDefaultEndpoint = "127.0.0.1:9333";
+constexpr const char* kDefaultNetworkId = "regtest";
+constexpr std::chrono::milliseconds kDefaultSyncInterval{1000};
+constexpr std::chrono::milliseconds kDefaultMineInterval{10000};
+constexpr std::chrono::milliseconds kDefaultStatusInterval{5000};
+constexpr std::chrono::milliseconds kDefaultLoopSleep{50};
+std::atomic<bool> gShouldStop{false};
+
 std::uint64_t nowSeconds() {
     using namespace std::chrono;
     return static_cast<std::uint64_t>(duration_cast<seconds>(system_clock::now().time_since_epoch()).count());
@@ -21,6 +35,9 @@ std::uint64_t nowSeconds() {
 
 void printUsage() {
     std::cout << "Usage:\n"
+              << "  novacoind daemon [--node-id <id>] [--endpoint <host:port>] [--network <id>]\n"
+              << "                   [--miner <address>] [--sync-interval-ms <ms>]\n"
+              << "                   [--mine-interval-ms <ms>] [--status-interval-ms <ms>]\n"
               << "  novacoind status\n"
               << "  novacoind mine <miner> [count]\n"
               << "  novacoind submit <from> <to> <amount_nova> [fee_nova]\n"
@@ -62,6 +79,146 @@ std::size_t parseSize(const std::string& raw, const std::string& field) {
         throw std::invalid_argument("Valeur invalide pour " + field + ": " + raw);
     }
     return static_cast<std::size_t>(value);
+}
+
+void handleSignal(int) {
+    gShouldStop.store(true);
+}
+
+struct DaemonConfig {
+    std::string nodeId = kDefaultNodeId;
+    std::string endpoint = kDefaultEndpoint;
+    std::string networkId = kDefaultNetworkId;
+    std::optional<std::string> minerAddress;
+    std::chrono::milliseconds syncInterval = kDefaultSyncInterval;
+    std::chrono::milliseconds mineInterval = kDefaultMineInterval;
+    std::chrono::milliseconds statusInterval = kDefaultStatusInterval;
+    std::chrono::milliseconds loopSleep = kDefaultLoopSleep;
+};
+
+bool parseDaemonArgs(const std::vector<std::string>& args, DaemonConfig& config, std::string& error) {
+    for (std::size_t i = 0; i < args.size(); ++i) {
+        const auto& arg = args[i];
+        if (arg == "--node-id") {
+            if (i + 1 >= args.size()) {
+                error = "Missing value for --node-id";
+                return false;
+            }
+            config.nodeId = args[++i];
+            continue;
+        }
+        if (arg == "--endpoint") {
+            if (i + 1 >= args.size()) {
+                error = "Missing value for --endpoint";
+                return false;
+            }
+            config.endpoint = args[++i];
+            continue;
+        }
+        if (arg == "--network") {
+            if (i + 1 >= args.size()) {
+                error = "Missing value for --network";
+                return false;
+            }
+            config.networkId = args[++i];
+            continue;
+        }
+        if (arg == "--miner") {
+            if (i + 1 >= args.size()) {
+                error = "Missing value for --miner";
+                return false;
+            }
+            config.minerAddress = args[++i];
+            continue;
+        }
+        if (arg == "--sync-interval-ms") {
+            if (i + 1 >= args.size()) {
+                error = "Missing value for --sync-interval-ms";
+                return false;
+            }
+            config.syncInterval = std::chrono::milliseconds(parseSize(args[++i], "sync-interval-ms"));
+            continue;
+        }
+        if (arg == "--mine-interval-ms") {
+            if (i + 1 >= args.size()) {
+                error = "Missing value for --mine-interval-ms";
+                return false;
+            }
+            config.mineInterval = std::chrono::milliseconds(parseSize(args[++i], "mine-interval-ms"));
+            continue;
+        }
+        if (arg == "--status-interval-ms") {
+            if (i + 1 >= args.size()) {
+                error = "Missing value for --status-interval-ms";
+                return false;
+            }
+            config.statusInterval = std::chrono::milliseconds(parseSize(args[++i], "status-interval-ms"));
+            continue;
+        }
+        error = "Unknown daemon argument: " + arg;
+        return false;
+    }
+    return true;
+}
+
+void printDaemonStatus(const Blockchain& daemonChain, const P2PNode& node) {
+    std::cout << "daemon_status\n"
+              << "  height=" << daemonChain.getBlockCount() - 1 << "\n"
+              << "  difficulty=" << daemonChain.getCurrentDifficulty() << "\n"
+              << "  total_supply=" << std::fixed << std::setprecision(8)
+              << Transaction::toNOVA(daemonChain.getTotalSupply()) << " NOVA\n"
+              << "  mempool_size=" << daemonChain.getPendingTransactions().size() << "\n"
+              << "  peer_count=" << node.peerCount() << "\n"
+              << "  chain_valid=" << std::boolalpha << daemonChain.isValid() << "\n";
+}
+
+int runDaemon(const std::vector<std::string>& args, Blockchain& daemonChain) {
+    DaemonConfig config;
+    std::string error;
+    if (!parseDaemonArgs(args, config, error)) {
+        std::cerr << "Erreur daemon: " << error << "\n";
+        printUsage();
+        return 1;
+    }
+
+    gShouldStop.store(false);
+    std::signal(SIGINT, handleSignal);
+    std::signal(SIGTERM, handleSignal);
+
+    P2PNode node(config.nodeId, config.endpoint, config.networkId, daemonChain, nullptr);
+
+    std::cout << "novacoind daemon started\n"
+              << "  node_id=" << config.nodeId << "\n"
+              << "  endpoint=" << config.endpoint << "\n"
+              << "  network=" << config.networkId << "\n";
+    if (config.minerAddress) {
+        std::cout << "  miner=" << *config.minerAddress << "\n";
+    }
+
+    auto nextSync = std::chrono::steady_clock::now();
+    auto nextMine = std::chrono::steady_clock::now();
+    auto nextStatus = std::chrono::steady_clock::now();
+
+    while (!gShouldStop.load()) {
+        const auto now = std::chrono::steady_clock::now();
+        if (now >= nextSync) {
+            node.broadcastBeacon();
+            node.syncWithPeers();
+            nextSync = now + config.syncInterval;
+        }
+        if (config.minerAddress && now >= nextMine) {
+            daemonChain.minePendingTransactions(*config.minerAddress);
+            nextMine = now + config.mineInterval;
+        }
+        if (now >= nextStatus) {
+            printDaemonStatus(daemonChain, node);
+            nextStatus = now + config.statusInterval;
+        }
+        std::this_thread::sleep_for(config.loopSleep);
+    }
+
+    std::cout << "novacoind daemon stopped\n";
+    return 0;
 }
 
 
@@ -487,13 +644,15 @@ void registerNodeHandlers(rpc::RpcDispatcher& dispatcher, Blockchain& daemonChai
 int main(int argc, char* argv[]) {
     try {
         Blockchain daemonChain{2, Transaction::fromNOVA(50.0), 20};
-
-        daemonChain.minePendingTransactions("node-miner");
-        daemonChain.createTransaction(
-            Transaction{"node-miner", "faucet", Transaction::fromNOVA(5.0), nowSeconds(), Transaction::fromNOVA(0.1)});
-        daemonChain.minePendingTransactions("node-miner");
-
-        const std::string command = argc > 1 ? argv[1] : "status";
+        const std::string command = argc > 1 ? argv[1] : "daemon";
+        if (command == "daemon") {
+            std::vector<std::string> args;
+            args.reserve(argc > 2 ? static_cast<std::size_t>(argc - 2) : 0U);
+            for (int i = 2; i < argc; ++i) {
+                args.emplace_back(argv[i]);
+            }
+            return runDaemon(args, daemonChain);
+        }
         if (command == "rpc") {
             if (argc < 3) {
                 printUsage();
